@@ -55,6 +55,19 @@ def test_equal_distances_select_first_input_index():
     assert indices == [1, 0, 2]
 
 
+def test_mixed_columns_select_by_nearest_selected_point():
+    # From 350°, 10° is only 20° away. After selecting 180°, the point at
+    # 90° is farther from its nearest selected point than the point at 10°.
+    selected, indices = max_diss_alg(
+        DataColumn([0, 0, 4, 4]),
+        DataColumn([350, 10, 180, 90], directional=True),
+        n_clusters=3,
+    )
+
+    assert indices == [0, 2, 3]
+    np.testing.assert_array_equal(selected, [[0, 350], [4, 180], [4, 90]])
+
+
 @pytest.mark.parametrize(
     "args, kwargs",
     [

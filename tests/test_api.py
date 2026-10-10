@@ -39,6 +39,22 @@ def test_mixed_columns_match_legacy_selection():
     np.testing.assert_array_equal(selected, legacy_selected)
 
 
+def test_seed_index_changes_selection_order():
+    selected, indices = max_diss_alg(
+        DataColumn([0, 2, 5, 9]), n_clusters=3, seed_index=2
+    )
+
+    assert indices == [2, 0, 3]
+    assert selected.shape == (3, 1)
+    np.testing.assert_array_equal(selected[:, 0], [5, 0, 9])
+
+
+def test_equal_distances_select_first_input_index():
+    _, indices = max_diss_alg(DataColumn([-2, 0, 2]), n_clusters=3, seed_index=1)
+
+    assert indices == [1, 0, 2]
+
+
 @pytest.mark.parametrize(
     "args, kwargs",
     [

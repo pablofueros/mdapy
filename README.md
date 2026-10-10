@@ -63,9 +63,7 @@ Existing tuple-based calls can use an explicit import:
 ```python
 from mdapy.legacy import max_diss_alg
 
-points, indices = max_diss_alg(
-    (tp, hs, direction), 3, seed_index=0, dir_indices=[2]
-)
+points, indices = max_diss_alg((tp, hs, direction), 3, seed_index=0, dir_indices=[2])
 ```
 
 Passing a tuple to `mdapy.max_diss_alg` raises an error explaining this import.

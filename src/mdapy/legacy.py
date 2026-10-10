@@ -1,17 +1,16 @@
 """Tuple-based API retained for existing users and historical comparison."""
 
 from functools import cache
-from typing import Optional
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.stats import circstd
 
 
 def distance(
     point1: NDArray,
     point2: NDArray,
-    dir_indices: Optional[list[int]],
+    dir_indices: list[int] | None,
     std_list: list[float],
 ) -> float:
     vector = np.zeros_like(point1)
@@ -24,16 +23,17 @@ def distance(
     return float(np.linalg.norm(vector))
 
 
-def preprocess(data_tuple: tuple[NDArray, ...]) -> NDArray:
+def preprocess(data_tuple: tuple[ArrayLike, ...]) -> NDArray:
     return np.array(data_tuple, dtype=np.float32).T
 
 
 def std_list(
-    data_tuple: tuple[NDArray, ...],
-    dir_indices: Optional[list[int]],
+    data_tuple: tuple[ArrayLike, ...],
+    dir_indices: list[int] | None,
 ) -> list[float]:
     return_list = []
     for ind, array in enumerate(data_tuple):
+        array = np.asarray(array)
         if dir_indices is not None and ind in dir_indices:
             computed_std = circstd(array, high=360, low=0)
         else:
@@ -44,8 +44,10 @@ def std_list(
 
 class DataMatrix:
     def __init__(
-        self, data_tuple: tuple[NDArray, ...], dir_indices: Optional[list[int]]
-    ):
+        self,
+        data_tuple: tuple[ArrayLike, ...],
+        dir_indices: list[int] | None,
+    ) -> None:
         # Check if any of the arrays in the tuple has NaN values
         for array in data_tuple:
             if np.isnan(array).any():
@@ -61,14 +63,17 @@ class DataMatrix:
     def num_points(self) -> int:
         return len(self.data)
 
-    @cache
+    # Preserve the historical cache for comparisons; revisit with the algorithm.
+    @cache  # noqa: B019
     def distance_between(self, index1: int, index2: int) -> float:
         point1, point2 = self.data[[index1, index2]]
         return distance(point1, point2, self.dir_indices, self.std_list)
 
 
 def distance_to_subset(
-    data_matrix: DataMatrix, point_index: int, subset_indices: list[int]
+    data_matrix: DataMatrix,
+    point_index: int,
+    subset_indices: list[int],
 ) -> float:
     distance_list = [
         data_matrix.distance_between(point_index, i_point) for i_point in subset_indices
@@ -77,10 +82,10 @@ def distance_to_subset(
 
 
 def max_diss_alg(
-    data_tuple: tuple[NDArray, ...],
+    data_tuple: tuple[ArrayLike, ...],
     n_clusters: int,
     seed_index: int = 0,
-    dir_indices: Optional[list[int]] = None,
+    dir_indices: list[int] | None = None,
     *,
     show_progress: bool = True,
 ) -> tuple[NDArray, list[int]]:

@@ -30,5 +30,7 @@ clustered_data, _ = max_diss_alg(
 fig = plt.figure()
 ax = fig.add_subplot(111, projection="3d")
 ax.scatter(tp, dir, hs, c="b", marker=".", alpha=0.1)
-ax.scatter(clustered_data[:, 1], clustered_data[:, 2], clustered_data[:, 0], c="r", marker="x")
+ax.scatter(
+    clustered_data[:, 1], clustered_data[:, 2], clustered_data[:, 0], c="r", marker="x"
+)
 plt.show()

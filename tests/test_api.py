@@ -19,9 +19,7 @@ def test_column_api_selects_same_points_as_legacy(capsys):
 
 def test_directional_column_uses_shortest_angular_distance():
     values = [350, 10, 180]
-    _, indices = max_diss_alg(
-        DataColumn(values, directional=True), n_clusters=2
-    )
+    _, indices = max_diss_alg(DataColumn(values, directional=True), n_clusters=2)
     assert indices == [0, 2]
 
 

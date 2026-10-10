@@ -8,11 +8,10 @@ La evolución del algoritmo debe poder explicarse y medirse con ejemplos.
 
 ## Forma de trabajar
 
-- Divide los cambios de API o del algoritmo en subfases pequeñas y revisables.
-  Antes de cada subfase, explica el comportamiento que cambiará, los archivos
-  previstos y cómo comprobarás el resultado.
-- Completa una subfase, muestra el diff relevante y sus comprobaciones, explica
-  las decisiones y espera la revisión del usuario antes de empezar la siguiente.
+- Antes de cada cambio, explica el comportamiento que cambiará, los archivos
+  previstos y cómo comprobarás el resultado y espera la revisión del usuario.
+- Si el usuario acepta el cambio, haz commit y push y sigue con el siguiente
+  paso si existe, en otro caso pregunta al usuario cómo continuar.
 - Mantén separadas las subfases de API, corrección, rendimiento y publicación.
   No introduzcas optimizaciones mientras se esté revisando el contrato de uso.
 - Al cambiar el algoritmo, fija primero los casos de referencia y las reglas

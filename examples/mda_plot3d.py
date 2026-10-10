@@ -1,27 +1,23 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.typing import NDArray
 
 from mdapy import DataColumn, max_diss_alg
 
-# Load wave data (140_256 hours)
-datawave = np.load("examples/data/datawave.npz")
-
-# Generate a random sample of N_SHORT data points
-indices = np.random.randint(0, 140_256, N_SHORT := 10_000)
-dir: NDArray = datawave["dir"][indices]
-tp: NDArray = datawave["tp"][indices]
-hs: NDArray = datawave["hs"][indices]
+with np.load("examples/data/datawave.npz") as datawave:
+    indices = np.random.default_rng(42).integers(0, len(datawave["tp"]), 10_000)
+    direction = datawave["dir"][indices]
+    tp = datawave["tp"][indices]
+    hs = datawave["hs"][indices]
 
 # Select the seed point index and the number of clusters
-seed_index = np.argmax(tp).astype(int)
+seed_index = int(np.argmax(tp))
 n_clusters = 10
 
-# Cluster the data array (2D)
+# Select observations from three columns
 clustered_data, _ = max_diss_alg(
     DataColumn(hs),
     DataColumn(tp),
-    DataColumn(dir, directional=True),
+    DataColumn(direction, directional=True),
     n_clusters=n_clusters,
     seed_index=seed_index,
 )
@@ -29,7 +25,7 @@ clustered_data, _ = max_diss_alg(
 # Plot the data points and the clustered ones
 fig = plt.figure()
 ax = fig.add_subplot(111, projection="3d")
-ax.scatter(tp, dir, hs, c="b", marker=".", alpha=0.1)
+ax.scatter(tp, direction, hs, c="b", marker=".", alpha=0.1)
 ax.scatter(
     clustered_data[:, 1], clustered_data[:, 2], clustered_data[:, 0], c="r", marker="x"
 )

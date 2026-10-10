@@ -18,24 +18,27 @@ The Maximum Dissimilarity Algorithm is a technique used to select a specified nu
 
 In this case, directional variables can also be considered, in which case, the distance between two angles is calculated as the shortest distance between the two angles in a circle. For example, the distance between 350° and 10° is 20°, not 340°. This is the approach used in this implementation of the algorithm (see [Guanche et al. (2013)](#1) for more details).
 
-### Algorithm Steps
-1. **Initialization**: Start with an empty subset, S. Choose the first data point arbitrarily or based on some criteria and add it to S.
+### Algorithm steps
 
-2. **Iteration**: Repeat the following steps until you have selected the desired number of data points (n).
+1. Start with the observation at `seed_index` (default `0`).
+2. For each unselected observation, find its distance to the nearest selected observation.
+3. Select the observation with the greatest nearest distance. Repeat until `n_clusters` observations have been selected.
 
-3. **Finding the Most Dissimilar Point**: For each data point not in S, calculate the minimum distance from that point to the points in S.
-
-4. **Selecting the Maximum Dissimilarity Point**: Choose the data point with the greatest dissimilarity (maximum distance calculated in the previous step) and include it in subset S.
-
-5. **Output**: Return the subset S, which contains n data points that are maximally dissimilar to each other.
+Distances are Euclidean after dividing each column's difference by its
+standard deviation and `sqrt(2)`. Directional differences use the shortest
+arc in degrees, and their standard deviation is circular. If two candidates
+have exactly the same distance, the one appearing first in the input is
+selected.
 
 ---
 
 ## Usage
 
-Pass one `DataColumn` per variable. Each column must contain one finite value
-per observation. Directional columns are angles in degrees; `n_clusters` is
-required and must be between 1 and the number of observations.
+Pass one `DataColumn` per variable. Each column must be one-dimensional, have
+the same number of observations, and contain only finite values. Columns with
+zero or undefined standard deviation are rejected. Directional columns are
+angles in degrees. `n_clusters` is required and must be between 1 and the
+number of observations; `seed_index` must be a valid input position.
 
 ```python
 from mdapy import DataColumn, max_diss_alg
@@ -52,7 +55,8 @@ points, indices = max_diss_alg(
 )
 ```
 
-`points` is a `(n_clusters, n_columns)` NumPy array in selection order.
+Input values are converted to `float32`. `points` is a `float32` NumPy array
+of shape `(n_clusters, n_columns)` in selection order.
 `indices` is a list of positions in the original input. The first position is
 `seed_index` (default `0`).
 

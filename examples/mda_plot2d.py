@@ -1,3 +1,5 @@
+from time import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
@@ -17,7 +19,12 @@ seed_index = np.argmax(tp).astype(int)
 n_clusters = 10
 
 # Cluster the data array (2D)
-clustered_data = max_diss_alg((dir, tp), n_clusters, seed_index, dir_indices=[0])
+time_start = time()
+clustered_data, _ = max_diss_alg((dir, tp), n_clusters, seed_index, dir_indices=[0])
+time_end = time()
+
+print(f"Elapsed time: {time_end - time_start:.2f} seconds")
+raise SystemExit
 
 # Plot the data points and the clustered ones
 plt.plot(dir, tp, ".", alpha=0.1)

@@ -1,0 +1,72 @@
+import numpy as np
+import pytest
+
+from mdapy import DataColumn, max_diss_alg
+from mdapy.legacy import max_diss_alg as legacy_max_diss_alg
+
+
+def test_column_api_selects_same_points_as_legacy(capsys):
+    values = [0, 2, 5, 9]
+    selected, indices = max_diss_alg(DataColumn(values), n_clusters=3)
+    legacy_selected, legacy_indices = legacy_max_diss_alg(
+        (values,), 3, show_progress=False
+    )
+
+    assert indices == [0, 3, 2] == legacy_indices
+    np.testing.assert_array_equal(selected, legacy_selected)
+    assert capsys.readouterr().out == ""
+
+
+def test_directional_column_uses_shortest_angular_distance():
+    values = [350, 10, 180]
+    _, indices = max_diss_alg(
+        DataColumn(values, directional=True), n_clusters=2
+    )
+    assert indices == [0, 2]
+
+
+def test_mixed_columns_match_legacy_selection():
+    heights = [1.0, 2.0, 5.0, 3.0]
+    directions = [350.0, 10.0, 180.0, 90.0]
+    selected, indices = max_diss_alg(
+        DataColumn(heights),
+        DataColumn(directions, directional=True),
+        n_clusters=3,
+        seed_index=1,
+    )
+    legacy_selected, legacy_indices = legacy_max_diss_alg(
+        (heights, directions), 3, seed_index=1, dir_indices=[1], show_progress=False
+    )
+    assert indices == legacy_indices
+    np.testing.assert_array_equal(selected, legacy_selected)
+
+
+@pytest.mark.parametrize(
+    "args, kwargs",
+    [
+        ((([0, 1, 2],), 2), {}),
+        ((([0, 1, 2],),), {"n_clusters": 2}),
+        ((), {"data_tuple": ([0, 1, 2],), "n_clusters": 2}),
+        ((([0, 1, 2],),), {"n_clusters": 2, "dir_indices": [0]}),
+    ],
+)
+def test_old_api_call_points_to_legacy(args, kwargs):
+    with pytest.raises(TypeError, match="from mdapy.legacy import max_diss_alg"):
+        max_diss_alg(*args, **kwargs)
+
+
+def test_column_api_rejects_missing_or_out_of_range_cluster_count():
+    column = DataColumn([0, 1, 2])
+    with pytest.raises(TypeError, match="n_clusters is required"):
+        max_diss_alg(column)
+    with pytest.raises(ValueError, match="n_clusters must be between"):
+        max_diss_alg(column, n_clusters=4)
+
+
+def test_column_api_rejects_invalid_columns():
+    with pytest.raises(ValueError, match="same length"):
+        max_diss_alg(DataColumn([0, 1]), DataColumn([0, 1, 2]), n_clusters=1)
+    with pytest.raises(ValueError, match="finite"):
+        DataColumn([0, np.inf])
+    with pytest.raises(ValueError, match="zero or undefined deviation"):
+        max_diss_alg(DataColumn([1, 1]), n_clusters=1)

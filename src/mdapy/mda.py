@@ -1,130 +1,85 @@
-from functools import cache
-from typing import Optional
+"""Public API for selecting maximally dissimilar observations."""
+
+from functools import cached_property
+from numbers import Integral
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.stats import circstd
 
-
-def distance(
-    point1: NDArray,
-    point2: NDArray,
-    dir_indices: Optional[list[int]],
-    std_list: list[float],
-) -> float:
-    vector = np.zeros_like(point1)
-    for ind, (p1_ind, p2_ind) in enumerate(zip(point1, point2)):
-        if dir_indices is not None and ind in dir_indices:
-            dist = ((p1_ind - p2_ind) + 180) % 360 - 180
-        else:
-            dist = p1_ind - p2_ind
-        vector[ind] = dist / (np.sqrt(2) * std_list[ind])
-    return float(np.linalg.norm(vector))
+from . import legacy
 
 
-def preprocess(data_tuple: tuple[NDArray, ...]) -> NDArray:
-    return np.array(data_tuple, dtype=np.float32).T
+class DataColumn:
+    """One scalar variable, optionally interpreted as angles in degrees."""
+
+    def __init__(self, array: ArrayLike, *, directional: bool = False) -> None:
+        if not isinstance(directional, bool):
+            raise TypeError("directional must be a bool")
+        values = np.asarray(array, dtype=np.float32)
+        if values.ndim != 1:
+            raise ValueError("Each data column must be one-dimensional")
+        if not np.isfinite(values).all():
+            raise ValueError("Data columns must contain only finite values")
+        self.np_array: NDArray[np.float32] = values
+        self.directional = directional
+
+    def __len__(self) -> int:
+        return len(self.np_array)
+
+    @cached_property
+    def standard_deviation(self) -> float:
+        if self.directional:
+            return float(circstd(self.np_array, high=360, low=0))
+        return float(np.std(self.np_array))
 
 
-def std_list(
-    data_tuple: tuple[NDArray, ...],
-    dir_indices: Optional[list[int]],
-) -> list[float]:
-    return_list = []
-    for ind, array in enumerate(data_tuple):
-        if dir_indices is not None and ind in dir_indices:
-            computed_std = circstd(array, high=360, low=0)
-        else:
-            computed_std = np.std(array)
-        return_list.append(computed_std)
-    return return_list
-
-
-class DataMatrix:
-    def __init__(
-        self, data_tuple: tuple[NDArray, ...], dir_indices: Optional[list[int]]
-    ):
-        # Check if any of the arrays in the tuple has NaN values
-        for array in data_tuple:
-            if np.isnan(array).any():
-                raise ValueError("The data contains NaN values")
-        self.data = preprocess(data_tuple)
-        self.std_list = std_list(data_tuple, dir_indices)
-        self.dir_indices = dir_indices
-
-    def __getitem__(self, index: list[int] | int) -> NDArray:
-        return self.data[index]
-
-    @property
-    def num_points(self) -> int:
-        return len(self.data)
-
-    @cache
-    def distance_between(self, index1: int, index2: int) -> float:
-        point1, point2 = self.data[[index1, index2]]
-        return distance(point1, point2, self.dir_indices, self.std_list)
-
-
-def distance_to_subset(
-    data_matrix: DataMatrix, point_index: int, subset_indices: list[int]
-) -> float:
-    distance_list = [
-        data_matrix.distance_between(point_index, i_point) for i_point in subset_indices
-    ]
-    return min(distance_list)
+_LEGACY_HINT = (
+    "The tuple-based API is available from mdapy.legacy: "
+    "from mdapy.legacy import max_diss_alg"
+)
 
 
 def max_diss_alg(
-    data_tuple: tuple[NDArray, ...],
-    n_clusters: int,
+    *columns: DataColumn,
+    n_clusters: int | None = None,
     seed_index: int = 0,
-    dir_indices: Optional[list[int]] = None,
-) -> tuple[NDArray, list[int]]:
+    **kwargs: object,
+) -> tuple[NDArray[np.float32], list[int]]:
+    """Select observations using columns and the maximum dissimilarity algorithm.
+
+    ``n_clusters`` is required. Directional columns use degrees with a period
+    of 360. Returns selected rows in selection order and their input indices.
     """
-    This function implements the Maximum Dissimilarity Algorithm (MDA) to cluster a data.
+    if "data_tuple" in kwargs or "dir_indices" in kwargs:
+        raise TypeError(_LEGACY_HINT)
+    if kwargs:
+        unexpected = next(iter(kwargs))
+        raise TypeError(f"Unexpected keyword argument: {unexpected}")
+    if columns and not all(isinstance(col, DataColumn) for col in columns):
+        raise TypeError(f"Expected DataColumn arguments. {_LEGACY_HINT}")
+    if not columns:
+        raise ValueError("At least one DataColumn is required")
+    if n_clusters is None:
+        raise TypeError("n_clusters is required")
+    if isinstance(n_clusters, bool) or not isinstance(n_clusters, Integral):
+        raise TypeError("n_clusters must be an integer")
+    if isinstance(seed_index, bool) or not isinstance(seed_index, Integral):
+        raise TypeError("seed_index must be an integer")
 
-    Parameters
-    ----------
-    data_tuple : tuple[NDArray, ...]
-        A tuple of arrays with the data to cluster.
-    n_clusters : int
-        The number of clusters to generate.
-    seed_index : int, optional
-        The index of the seed point, by default 0
-    dir_indices : list[int], optional
-        The indices of directional arrays in the tuple, by default None
+    n_points = len(columns[0])
+    if any(len(col) != n_points for col in columns):
+        raise ValueError("All data columns must have the same length")
+    if not 1 <= n_clusters <= n_points:
+        raise ValueError("n_clusters must be between 1 and the number of rows")
+    if not 0 <= seed_index < n_points:
+        raise ValueError("seed_index is out of bounds")
+    for index, col in enumerate(columns):
+        if not np.isfinite(col.standard_deviation) or col.standard_deviation <= 0:
+            raise ValueError(f"Column {index} has zero or undefined deviation")
 
-    Returns
-    -------
-    tuple[NDArray, list[int]]
-        A tuple with the clustered data points and their indices in the original data.
-    """
-
-    # Create the data matrix
-    data_matrix = DataMatrix(data_tuple, dir_indices)
-
-    # Initialize the centroids with the seed
-    subset_indices: list[int] = [seed_index]
-
-    while len(subset_indices) < n_clusters:
-        max_dist = next_point_index = -1
-        # Find the point with the maximum distance to the subset
-        for i_point in range(data_matrix.num_points):
-            if i_point in subset_indices:
-                continue
-            # Get the distance to the closest point in the subset
-            distance = distance_to_subset(data_matrix, i_point, subset_indices)
-            if distance > max_dist:
-                max_dist = distance
-                next_point_index = i_point
-            # Compute the progress of the for loop percentage
-            progress = (i_point + 1) / data_matrix.num_points * 100
-            print(
-                f"Finding cluster nº{len(subset_indices) + 1} --> {progress:.2f}%",
-                end="\r",
-            )
-        # Add the point with the maximum distance to the subset
-        if next_point_index > -1:
-            subset_indices.append(next_point_index)
-
-    return data_matrix[subset_indices], subset_indices
+    arrays = tuple(col.np_array for col in columns)
+    dir_indices = [i for i, col in enumerate(columns) if col.directional]
+    return legacy.max_diss_alg(
+        arrays, int(n_clusters), int(seed_index), dir_indices, show_progress=False
+    )

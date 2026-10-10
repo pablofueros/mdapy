@@ -1,10 +1,15 @@
 # 👋 Welcome to the mdapy repository
 
-## ❗ Instalation Note
-This package name on Github is `mdapy`, but the package name on Pypi is `ihc-mdapy` due to a name conflict. So, if you want to install the package, you should use:
+## Installation
+
+The new `DataColumn` API is currently under development. Install this checkout to try it:
+
 ```bash
-pip install ihc-mdapy
+pip install -e .
 ```
+
+The previously published distribution is named `ihc-mdapy` and uses the
+tuple-based API shown in the legacy section below.
 
 ---
 
@@ -26,45 +31,44 @@ In this case, directional variables can also be considered, in which case, the d
 
 ---
 
-## 💻 Installation
-You can use the Maximum Dissimilarity Algorithm by following these steps:
+## Usage
 
-1. Install the mdapy package using pip:
-   ```bash
-   pip install ihc-mdapy
-   ```
+Pass one `DataColumn` per variable. Each column must contain one finite value
+per observation. Directional columns are angles in degrees; `n_clusters` is
+required and must be between 1 and the number of observations.
 
-   Adiotionally, you can also install the package from the source code:
-   ```bash
-   git clone https://github.com/IHCantabria/mdapy
-   cd mdapy
-   pip install .
-   ```
+```python
+from mdapy import DataColumn, max_diss_alg
 
-1. Import the max_diss_alg function from the mdapy package:
-   ```python
-   from mdapy import max_diss_alg
-   ```
+tp = [14.93, 10.42, 7.46, 7.63, 12.20, 12.05, 14.49, 8.62]
+hs = [1.82, 1.45, 0.26, 0.90, 1.30, 5.71, 1.40, 2.18]
+direction = [268, 272, 289, 293, 276, 273, 276, 292]
 
-1. Create a tuple with the data arrays to use (must have same lengths) and choose the number of data points to select:
-   ```python
-   tp = [14.93, 10.42, 7.46, 7.63, 12.20, 12.05, 14.49, 8.62]
-   hs = [1.82, 1.45, 0.26, 0.90, 1.30, 5.71, 1.40, 2.18]
-   dr = [268, 272, 289, 293, 276, 273, 276, 292]
-   data = (tp, hs, dr)
-   n_clusters = 3
-   ```
+points, indices = max_diss_alg(
+    DataColumn(tp),
+    DataColumn(hs),
+    DataColumn(direction, directional=True),
+    n_clusters=3,
+)
+```
 
-1. Aditionally, choose the seed point to start the algorithm (optional) and, in case any of the variables is directional, provide the position on the tuple of that array.
-    ```python
-    seed_index = np.argmax(tp)
-    dir_indices = [2]
-   ```
+`points` is a `(n_clusters, n_columns)` NumPy array in selection order.
+`indices` is a list of positions in the original input. The first position is
+`seed_index` (default `0`).
 
-1. Call the max_diss_alg function and store the output data:
-    ```python
-    clustered_data, indices = max_diss_alg(data, n_clusters, seed_index, dir_indices)
-   ```
+### Legacy tuple API
+
+Existing tuple-based calls can use an explicit import:
+
+```python
+from mdapy.legacy import max_diss_alg
+
+points, indices = max_diss_alg(
+    (tp, hs, direction), 3, seed_index=0, dir_indices=[2]
+)
+```
+
+Passing a tuple to `mdapy.max_diss_alg` raises an error explaining this import.
 
 ---
 

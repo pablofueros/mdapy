@@ -68,6 +68,18 @@ def test_mixed_columns_select_by_nearest_selected_point():
     np.testing.assert_array_equal(selected, [[0, 350], [4, 180], [4, 90]])
 
 
+def test_rescaling_one_column_preserves_selection_order():
+    linear = [0, 3, 1, 2]
+    angles = DataColumn([0, 10, 20, 170], directional=True)
+
+    _, original_indices = max_diss_alg(DataColumn(linear), angles, n_clusters=3)
+    _, scaled_indices = max_diss_alg(
+        DataColumn([100 * value for value in linear]), angles, n_clusters=3
+    )
+
+    assert original_indices == scaled_indices == [0, 3, 1]
+
+
 @pytest.mark.parametrize(
     "args, kwargs",
     [

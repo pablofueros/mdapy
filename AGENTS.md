@@ -8,10 +8,10 @@ La evolución del algoritmo debe poder explicarse y medirse con ejemplos.
 
 ## Forma de trabajar
 
-- Antes de cada cambio, explica el comportamiento que cambiará, los archivos
-  previstos y cómo comprobarás el resultado y espera la revisión del usuario.
-- Si el usuario acepta el cambio, haz commit y push y sigue con el siguiente
-  paso si existe, en otro caso pregunta al usuario cómo continuar.
+- Antes de modificar archivos, explica el cambio previsto y espera la aprobación
+  del usuario.
+- La aprobación para modificar no autoriza a hacer commit ni push; pide permiso
+  explícito para cada operación.
 - Mantén separadas las subfases de API, corrección, rendimiento y publicación.
   No introduzcas optimizaciones mientras se esté revisando el contrato de uso.
 - Al cambiar el algoritmo, fija primero los casos de referencia y las reglas

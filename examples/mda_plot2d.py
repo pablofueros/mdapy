@@ -5,8 +5,12 @@ import numpy as np
 
 from mdapy import DataColumn, max_diss_alg
 
+rng = np.random.default_rng(42)
+N_SAMPLES = 10_000
+
 with np.load("examples/data/datawave.npz") as datawave:
-    indices = np.random.default_rng(42).integers(0, len(datawave["tp"]), 10_000)
+    N_OBSERVATIONS = len(datawave["tp"])
+    indices = rng.choice(N_OBSERVATIONS, size=N_SAMPLES, replace=False)
     direction = datawave["dir"][indices]
     tp = datawave["tp"][indices]
 

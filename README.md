@@ -55,7 +55,8 @@ points, indices = max_diss_alg(
 )
 ```
 
-Input values are converted to `float32`. `points` is a `float32` NumPy array
+Standard deviations are calculated using the input dtype, as in the legacy API.
+The working matrix is then converted to `float32`. `points` is a `float32` NumPy array
 of shape `(n_clusters, n_columns)` in selection order.
 `indices` is a list of positions in the original input. The first position is
 `seed_index` (default `0`).

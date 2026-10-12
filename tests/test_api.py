@@ -109,3 +109,16 @@ def test_column_api_rejects_invalid_columns():
         DataColumn([0, np.inf])
     with pytest.raises(ValueError, match="zero or undefined deviation"):
         max_diss_alg(DataColumn([1, 1]), n_clusters=1)
+
+
+@pytest.mark.parametrize("scale", [1e-30, 1e20])
+def test_deviation_is_calculated_before_float32_conversion(scale):
+    values = np.array([0, scale, 2 * scale], dtype=np.float64)
+    selected, indices = max_diss_alg(DataColumn(values), n_clusters=3)
+    legacy_selected, legacy_indices = legacy_max_diss_alg(
+        (values,), 3, show_progress=False
+    )
+
+    assert indices == legacy_indices == [0, 2, 1]
+    assert selected.dtype == np.float32
+    np.testing.assert_array_equal(selected, legacy_selected)

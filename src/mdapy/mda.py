@@ -16,12 +16,12 @@ class DataColumn:
     def __init__(self, array: ArrayLike, *, directional: bool = False) -> None:
         if not isinstance(directional, bool):
             raise TypeError("directional must be a bool")
-        values = np.asarray(array, dtype=np.float32)
+        values = np.asarray(array)
         if values.ndim != 1:
             raise ValueError("Each data column must be one-dimensional")
         if not np.isfinite(values).all():
             raise ValueError("Data columns must contain only finite values")
-        self.np_array: NDArray[np.float32] = values
+        self.np_array: NDArray = values
         self.directional = directional
 
     def __len__(self) -> int:

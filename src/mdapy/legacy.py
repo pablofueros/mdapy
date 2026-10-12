@@ -26,24 +26,6 @@ def std_list(
     return return_list
 
 
-class DataMatrix:
-    def __init__(
-        self,
-        data_tuple: tuple[ArrayLike, ...],
-        dir_indices: list[int] | None,
-    ) -> None:
-        # Check if any of the arrays in the tuple has NaN values
-        for array in data_tuple:
-            if np.isnan(array).any():
-                raise ValueError("The data contains NaN values")
-        self.data = preprocess(data_tuple)
-        self.std_list = std_list(data_tuple, dir_indices)
-        self.dir_indices = dir_indices
-
-    def __getitem__(self, index: list[int] | int) -> NDArray:
-        return self.data[index]
-
-
 def max_diss_alg(
     data_tuple: tuple[ArrayLike, ...],
     n_clusters: int,
@@ -74,15 +56,20 @@ def max_diss_alg(
         A tuple with the clustered data points and their indices in the original data.
     """
 
-    # Create the data matrix
-    data_matrix = DataMatrix(data_tuple, dir_indices)
+    # Check if any of the arrays in the tuple has NaN values
+    for array in data_tuple:
+        if np.isnan(array).any():
+            raise ValueError("The data contains NaN values")
+
+    data = preprocess(data_tuple)
+    deviations = std_list(data_tuple, dir_indices)
 
     indices = _select_indices(
-        data_matrix.data,
-        data_matrix.std_list,
-        data_matrix.dir_indices,
+        data,
+        deviations,
+        dir_indices,
         n_clusters,
         seed_index,
         show_progress=show_progress,
     )
-    return data_matrix[indices], indices
+    return data[indices], indices

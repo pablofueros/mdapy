@@ -1,9 +1,3 @@
-################################################
-# Created By  : Pablo Garcia (for IHCantabria)
-# Created Date: 18/09/2023
-# Version     : 0.1
-################################################
-
 from functools import cache
 
 import numpy as np

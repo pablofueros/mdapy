@@ -5,6 +5,52 @@ from mdapy import DataColumn, max_diss_alg
 from mdapy.legacy import max_diss_alg as legacy_max_diss_alg
 
 
+@pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
+@pytest.mark.parametrize("directional", [False, True])
+def test_column_owns_data_and_keeps_cached_deviation_consistent(dtype, directional):
+    original = [350, 10, 180, 90] if directional else [0, 2, 5, 9]
+    expected_indices = [0, 2, 3] if directional else [0, 3, 2]
+    values = np.array(original, dtype=dtype)
+    column = DataColumn(values, directional=directional)
+    deviation = column.standard_deviation
+
+    assert column.np_array.dtype == values.dtype
+    assert not np.shares_memory(column.np_array, values)
+    assert values.flags.writeable
+    values[:] = 0
+
+    np.testing.assert_array_equal(column.np_array, original)
+    assert column.standard_deviation == deviation
+    points, indices = max_diss_alg(column, n_clusters=3)
+    assert indices == expected_indices
+    np.testing.assert_array_equal(
+        points[:, 0], np.array(original, dtype=np.float32)[expected_indices]
+    )
+
+
+def test_column_rejects_writes_through_public_array():
+    column = DataColumn([0, 2, 5, 9])
+    deviation = column.standard_deviation
+    values = column.np_array
+
+    with pytest.raises(ValueError, match="read-only"):
+        values[0] = 100
+    with pytest.raises(ValueError, match="WRITEABLE"):
+        values.setflags(write=True)
+
+    np.testing.assert_array_equal(column.np_array, [0, 2, 5, 9])
+    assert column.standard_deviation == deviation
+
+
+@pytest.mark.parametrize(
+    "attribute, replacement", [("np_array", np.array([1, 2, 3])), ("directional", True)]
+)
+def test_column_public_properties_cannot_be_reassigned(attribute, replacement):
+    column = DataColumn([0, 1, 2])
+    with pytest.raises(AttributeError, match=attribute):
+        setattr(column, attribute, replacement)
+
+
 def test_column_api_selects_same_points_as_legacy(capsys):
     values = [0, 2, 5, 9]
     selected, indices = max_diss_alg(DataColumn(values), n_clusters=3)

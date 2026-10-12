@@ -11,21 +11,36 @@ from .core import _select_indices
 
 
 class DataColumn:
-    """One scalar variable, optionally interpreted as angles in degrees."""
+    """A stable copy of one variable, optionally interpreted as degrees.
+
+    Data and directional interpretation are read-only through the public API,
+    so the cached standard deviation remains consistent with the column.
+    """
 
     def __init__(self, array: ArrayLike, *, directional: bool = False) -> None:
+        values = np.asarray(array)
         if not isinstance(directional, bool):
             raise TypeError("directional must be a bool")
-        values = np.asarray(array)
         if values.ndim != 1:
             raise ValueError("Each data column must be one-dimensional")
         if not np.isfinite(values).all():
             raise ValueError("Data columns must contain only finite values")
-        self.np_array: NDArray = values
-        self.directional = directional
+        self._values: NDArray = values.copy()
+        self._values.setflags(write=False)
+        self._directional = directional
+
+    @property
+    def np_array(self) -> NDArray:
+        """Return a read-only view backed by the column's protected copy."""
+        return self._values.view()
+
+    @property
+    def directional(self) -> bool:
+        """Whether this column represents angles in degrees."""
+        return self._directional
 
     def __len__(self) -> int:
-        return len(self.np_array)
+        return len(self._values)
 
     @cached_property
     def standard_deviation(self) -> float:

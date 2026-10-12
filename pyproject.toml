@@ -31,3 +31,8 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ['src/mdapy']
+
+[tool.ruff]
+lint.extend-select = ["F", "I"]
+extend-exclude = ["benchmarks"]
+force-exclude = true

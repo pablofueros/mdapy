@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import circstd
 
-from . import legacy
+from .core import _select_indices
 
 
 class DataColumn:
@@ -32,6 +32,16 @@ class DataColumn:
         if self.directional:
             return float(circstd(self.np_array, high=360, low=0))
         return float(np.std(self.np_array))
+
+
+def _prepare_data(
+    columns: tuple[DataColumn, ...],
+) -> tuple[NDArray[np.float32], list[float], list[int]]:
+    """Keep input deviations separate from the float32 working matrix."""
+    deviations = [col.standard_deviation for col in columns]
+    data = np.array(tuple(col.np_array for col in columns), dtype=np.float32).T
+    directional = [i for i, col in enumerate(columns) if col.directional]
+    return data, deviations, directional
 
 
 _LEGACY_HINT = (
@@ -78,8 +88,8 @@ def max_diss_alg(
         if not np.isfinite(col.standard_deviation) or col.standard_deviation <= 0:
             raise ValueError(f"Column {index} has zero or undefined deviation")
 
-    arrays = tuple(col.np_array for col in columns)
-    dir_indices = [i for i, col in enumerate(columns) if col.directional]
-    return legacy.max_diss_alg(
-        arrays, int(n_clusters), int(seed_index), dir_indices, show_progress=False
+    data, deviations, directional = _prepare_data(columns)
+    indices = _select_indices(
+        data, deviations, directional, int(n_clusters), int(seed_index)
     )
+    return data[indices], indices

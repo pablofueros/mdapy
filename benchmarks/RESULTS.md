@@ -42,3 +42,46 @@ comprobar si las próximas optimizaciones reducen tiempo y memoria conservando
 las selecciones en los casos comparados.
 
 Los datos detallados de esta ejecución están en `results/current/`.
+
+## Subfase 2.1 — Mínimos incrementales y NumPy
+
+Nueva medición del **12 de octubre de 2026**, en el mismo entorno, con las
+mismas 140.256 filas, variables, tipos y semilla inicial. Se comparan la
+referencia independiente `v0_1_2.py` y la API pública mediante `current.py`.
+El checkout medido corresponde a los cambios sin commit de la rama
+`perf/mda-optimization`, sobre `30818bb`. Los resultados del punto de partida
+se conservan arriba; esta tabla corresponde a una ejecución nueva.
+
+Se mantienen cinco repeticiones en procesos independientes y el límite de
+30 segundos. Todas las ejecuciones terminaron y seleccionaron los mismos
+índices en el mismo orden. Pasaron también los once casos de referencia,
+incluidos los nuevos casos de casi empate, dos variables direccionales y
+ángulos fuera de una vuelta.
+
+| Selecciones | Referencia, llamada mediana (s) | Actual, llamada mediana (s) | Referencia, memoria máxima (MiB) | Actual, memoria máxima (MiB) |
+| ---: | ---: | ---: | ---: | ---: |
+| 2 | 1,666 | 0,186 | 133,3 | 112,0 |
+| 3 | 3,415 | 0,383 | 148,3 | 109,8 |
+| 5 | 6,698 | 0,773 | 200,4 | 118,3 |
+
+Para cinco selecciones, el tiempo total medio del proceso pasó de 7,193 a
+1,148 segundos. Ambas versiones eligieron
+`[27359, 128807, 123587, 55022, 123571]`.
+
+La implementación actual guarda una distancia mínima por candidato y solo
+la actualiza frente al último punto elegido. Evita la caché de pares y los
+recorridos del subconjunto; vectoriza diferencias y normalización y reutiliza
+las desviaciones calculadas por la API. Conserva la norma por fila: reducir
+por un eje o comparar cuadrados puede cambiar los empates en `float32`.
+
+Son tiempos de llamadas completas: la actual incluye construir los
+`DataColumn`, mientras la referencia sigue generando progreso a `/dev/null`.
+La diferencia no mide exclusivamente la mejora del núcleo. La memoria es
+el RSS máximo del proceso, incluidos imports y datos. La igualdad observada
+corresponde a los casos y cargas comparados en este entorno.
+
+Los datos detallados están en `results/numpy-incremental/`. Se reproducen con:
+
+```bash
+uv run benchmarks/run.py --output benchmarks/results/otra-ejecucion
+```

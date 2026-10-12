@@ -1,0 +1,4 @@
+{
+  "v0.1.1": {"file": "v0_1_1.py", "revision": "6ba632ffbbdca3f215f6b27f39150454eaed37fe", "api": "tuple"},
+  "candidate": {"file": "src/mdapy", "revision": "checkout", "api": "columns"}
+}

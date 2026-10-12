@@ -1,0 +1,10 @@
+[
+  {"name":"scalar", "columns":[[0,2,5,9]], "directional":[], "seed_index":0, "expected":[0,3,2]},
+  {"name":"seed", "columns":[[0,2,5,9]], "directional":[], "seed_index":2, "expected":[2,0,3]},
+  {"name":"directional", "columns":[[350,10,180]], "directional":[0], "seed_index":0, "expected":[0,2]},
+  {"name":"mixed", "columns":[[0,0,4,4],[350,10,180,90]], "directional":[1], "seed_index":0, "expected":[0,2,3]},
+  {"name":"tie", "columns":[[-2,0,2]], "directional":[], "seed_index":1, "expected":[1,0,2]},
+  {"name":"duplicates", "columns":[[0,0,2,2]], "directional":[], "seed_index":0, "expected":[0,2,1,3]},
+  {"name":"small_deviation", "columns":[[0,1e-30,2e-30]], "directional":[], "seed_index":0, "expected":[0,2,1]},
+  {"name":"large_deviation", "columns":[[0,1e20,2e20]], "directional":[], "seed_index":0, "expected":[0,2,1]}
+]

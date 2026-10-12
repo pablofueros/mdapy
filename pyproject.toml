@@ -1,6 +1,6 @@
 [project]
 name = "ihc-mdapy"
-version = "0.2.0"
+version = "0.1.1"
 description = "Maximum Dissimilarity Algorithm in Python"
 readme = "README.md"
 authors = [{ name = "Pablo Garcia" }, { email = "pablofueros@gmail.com" }]

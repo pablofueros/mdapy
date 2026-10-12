@@ -85,3 +85,45 @@ Los datos detallados están en `results/numpy-incremental/`. Se reproducen con:
 ```bash
 uv run benchmarks/run.py --output benchmarks/results/otra-ejecucion
 ```
+
+## Cierre de Python/NumPy — Columnas protegidas
+
+Medición del **13 de octubre de 2026** sobre el commit `256380c`, después de
+separar el núcleo en `core.py`, retirar `DataMatrix` de producción y proteger
+los datos de `DataColumn`. La llamada actual incluye las copias de entrada
+necesarias para mantener coherente la desviación guardada.
+
+Se repitió el protocolo anterior en el mismo entorno: todas las 140.256 filas,
+entrada `float64`, matriz y salida `float32`, semilla 27359, 2/3/5 selecciones,
+cinco repeticiones independientes y un límite de 30 segundos por ejecución.
+Los once casos de referencia pasaron. Todas las ejecuciones terminaron y
+conservaron los índices y su orden, tanto entre implementaciones como frente
+a la medición anterior.
+
+| Selecciones | Referencia, llamada mediana (s) | Actual, llamada mediana (s) | Referencia, memoria máxima (MiB) | Actual, memoria máxima (MiB) |
+| ---: | ---: | ---: | ---: | ---: |
+| 2 | 1,704 | 0,205 | 129,3 | 114,1 |
+| 3 | 3,544 | 0,393 | 158,1 | 123,0 |
+| 5 | 7,593 | 0,801 | 198,6 | 115,4 |
+
+Respecto a la primera implementación optimizada, las medianas de la llamada
+actual aumentaron un 10,0 %, 2,4 % y 3,6 %, respectivamente. El rendimiento
+sigue en un rango similar con las columnas protegidas. El RSS máximo varía
+entre procesos y no permite aislar por sí solo el coste de las nuevas copias.
+
+Para cinco selecciones, el tiempo total medio fue de 8,112 segundos en la
+referencia y 1,145 en la API actual. Los índices siguen siendo
+`[27359, 128807, 123587, 55022, 123571]`.
+
+Hyperfine señaló una primera ejecución actual más lenta con dos selecciones;
+se conserva dentro de las cinco repeticiones, sin descartarla ni modificar
+el protocolo. Se mantienen las limitaciones de alcance anteriores: llamadas
+completas, progreso histórico a `/dev/null` y memoria del proceso completo.
+Estos resultados cierran la comparación de Python/NumPy en las cargas medidas;
+Numba queda para una rama y evaluación separadas.
+
+Datos detallados en `results/python-final-2026-10-13/`. Comando utilizado:
+
+```bash
+uv run benchmarks/run.py --output benchmarks/results/python-final-2026-10-13
+```

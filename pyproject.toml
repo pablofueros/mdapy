@@ -1,27 +1,38 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "ihc-mdapy"
-version = "0.1.0"
+name = "mdapy-v2"
+version = "0.1.1"
 description = "Maximum Dissimilarity Algorithm in Python"
-authors = [{ name = "Pablo Garcia" }, { email = "pablofueros@gmail.com" }]
 readme = "README.md"
-requires-python = ">=3.10.0"
 license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11.2",
+]
 
-dependencies = ["numpy>=1.26", "scipy>=1.11.2"]
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "matplotlib>=3.8",
+    "pytest>=7.0",
+    "pytest-cov>=4.1",
+    "ty>=0.0.85,<1.0",
+]
 
-[project.optional-dependencies]
-test = ["pytest>=7.0", "pytest-cov>=4.1"]
-plot = ["matplotlib>=3.8"]
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mdapy"
 
 [project.urls]
-Repository = "https://github.com/IHCantabria/mdapy"
+Repository = "https://github.com/pablofueros/mdapy-v2"
+Issues = "https://github.com/pablofueros/mdapy-v2/issues"
+"Original project" = "https://github.com/IHCantabria/mdapy"
 
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build.targets.wheel]
-packages = ['mdapy']
+[tool.ruff]
+lint.extend-select = ["F", "I"]
+force-exclude = true

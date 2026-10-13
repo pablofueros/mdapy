@@ -1,25 +1,25 @@
+from time import perf_counter
+
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.typing import NDArray
 
-from mdapy import max_diss_alg
+from mdapy import DataColumn, max_diss_alg
 
-# Load wave data (140_256 hours)
-datawave = np.load("examples/data/datawave.npz")
+with np.load("examples/data/datawave.npz") as datawave:
+    indices = np.random.default_rng(42).integers(0, len(datawave["tp"]), 10_000)
+    direction = datawave["dir"][indices]
+    tp = datawave["tp"][indices]
 
-# Generate a random sample of N_SHORT data points
-indices = np.random.randint(0, 140_256, N_SHORT := 10_000)
-dir: NDArray = datawave["dir"][indices]
-tp: NDArray = datawave["tp"][indices]
+seed_index = int(np.argmax(tp))
+start = perf_counter()
+selected, _ = max_diss_alg(
+    DataColumn(direction, directional=True),
+    DataColumn(tp),
+    n_clusters=10,
+    seed_index=seed_index,
+)
+print(f"Elapsed time: {perf_counter() - start:.2f} seconds")
 
-# Select the seed point index and the number of clusters
-seed_index = np.argmax(tp).astype(int)
-n_clusters = 10
-
-# Cluster the data array (2D)
-clustered_data = max_diss_alg((dir, tp), n_clusters, seed_index, dir_indices=[0])
-
-# Plot the data points and the clustered ones
-plt.plot(dir, tp, ".", alpha=0.1)
-plt.plot(clustered_data[:, 0], clustered_data[:, 1], "x", c="r")
+plt.plot(direction, tp, ".", alpha=0.1)
+plt.plot(selected[:, 0], selected[:, 1], "x", c="r")
 plt.show()

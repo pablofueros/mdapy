@@ -1,15 +1,32 @@
-# 👋 Welcome to the mdapy repository
+# mdapy-v2
+
+`mdapy-v2` is a maintained fork of
+[`IHCantabria/mdapy`](https://github.com/IHCantabria/mdapy), developed by the
+original author. It preserves the `mdapy` Python import while evolving the API,
+correctness checks, examples, and performance of the maximum dissimilarity
+algorithm.
+
+The distributions `mdapy-v2`, `ihc-mdapy`, and the unrelated `mdapy` project
+all provide a package named `mdapy`. Treat them as alternatives: do not install
+them together in the same Python environment.
 
 ## Installation
 
-The new `DataColumn` API is currently under development. Install this checkout to try it:
+Install the maintained distribution from PyPI:
 
 ```bash
-pip install -e .
+pip install mdapy-v2
 ```
 
-The previously published distribution is named `ihc-mdapy` and uses the
-tuple-based API shown in the legacy section below.
+The import remains unchanged:
+
+```python
+from mdapy import DataColumn, max_diss_alg
+```
+
+The original `ihc-mdapy==0.1.0` distribution uses the tuple-based API shown in
+the legacy section below. Its unpublished `v0.1.1` fix remains available from
+the Git history of this repository.
 
 ---
 
@@ -83,7 +100,12 @@ Passing a tuple to `mdapy.max_diss_alg` raises an error explaining this import.
 ---
 
 ## ©️ Credits
-Developed and maintained by 👨‍💻 [Pablo Garcia](https://github.com/pablofueros) @ 🏢 [IHCantabria](https://github.com/IHCantabria).
+
+Originally developed by 👨‍💻 [Pablo Garcia](https://github.com/pablofueros)
+at 🏢 [IHCantabria](https://github.com/IHCantabria), and now maintained as
+the personal `mdapy-v2` fork. The historical `v0.1.1` fix was contributed by
+Álvaro Rodríguez. The original IHCantabria copyright notice and MIT terms are
+preserved in [`LICENSE`](LICENSE).
 
 ---
 

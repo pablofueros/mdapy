@@ -1,4 +1,4 @@
-"""Public API for selecting maximally dissimilar observations."""
+"""Column-based API for selecting maximally dissimilar observations."""
 
 from functools import cached_property
 from numbers import Integral
@@ -25,7 +25,7 @@ class DataColumn:
             raise ValueError("Each data column must be one-dimensional")
         if not np.isfinite(values).all():
             raise ValueError("Data columns must contain only finite values")
-        self._values: NDArray = values.copy()
+        self._values = values.copy()
         self._values.setflags(write=False)
         self._directional = directional
 
@@ -49,16 +49,6 @@ class DataColumn:
         return float(np.std(self.np_array))
 
 
-def _prepare_data(
-    columns: tuple[DataColumn, ...],
-) -> tuple[NDArray[np.float32], list[float], list[int]]:
-    """Keep input deviations separate from the float32 working matrix."""
-    deviations = [col.standard_deviation for col in columns]
-    data = np.array(tuple(col.np_array for col in columns), dtype=np.float32).T
-    directional = [i for i, col in enumerate(columns) if col.directional]
-    return data, deviations, directional
-
-
 _LEGACY_HINT = (
     "The tuple-based API is available from mdapy.legacy: "
     "from mdapy.legacy import max_diss_alg"
@@ -67,30 +57,49 @@ _LEGACY_HINT = (
 
 def max_diss_alg(
     *columns: DataColumn,
-    n_clusters: int | None = None,
+    n_clusters: int,
     seed_index: int = 0,
+    show_progress: bool = False,
     **kwargs: object,
 ) -> tuple[NDArray[np.float32], list[int]]:
-    """Select observations using columns and the maximum dissimilarity algorithm.
+    """Select maximally dissimilar observations.
 
-    ``n_clusters`` is required. Directional columns use degrees with a period
-    of 360. Returns selected rows in selection order and their input indices.
+    Parameters
+    ----------
+    columns : DataColumn
+        Columns describing each variable. Directional columns represent angles
+        in degrees with a period of 360.
+    n_clusters : int
+        Number of observations to select.
+    seed_index : int, optional
+        Index of the first selected observation, by default 0.
+    show_progress : bool, optional
+        Display selection progress, by default False.
+
+    Returns
+    -------
+    selected_data : NDArray[np.float32]
+        Selected observations in selection order.
+    selected_indices : list[int]
+        Indices of the selected observations in the original data.
     """
+
     if "data_tuple" in kwargs or "dir_indices" in kwargs:
         raise TypeError(_LEGACY_HINT)
     if kwargs:
         unexpected = next(iter(kwargs))
         raise TypeError(f"Unexpected keyword argument: {unexpected}")
+
     if columns and not all(isinstance(col, DataColumn) for col in columns):
         raise TypeError(f"Expected DataColumn arguments. {_LEGACY_HINT}")
     if not columns:
         raise ValueError("At least one DataColumn is required")
-    if n_clusters is None:
-        raise TypeError("n_clusters is required")
     if isinstance(n_clusters, bool) or not isinstance(n_clusters, Integral):
         raise TypeError("n_clusters must be an integer")
     if isinstance(seed_index, bool) or not isinstance(seed_index, Integral):
         raise TypeError("seed_index must be an integer")
+    if not isinstance(show_progress, bool):
+        raise TypeError("show_progress must be a bool")
 
     n_points = len(columns[0])
     if any(len(col) != n_points for col in columns):
@@ -99,12 +108,22 @@ def max_diss_alg(
         raise ValueError("n_clusters must be between 1 and the number of rows")
     if not 0 <= seed_index < n_points:
         raise ValueError("seed_index is out of bounds")
-    for index, col in enumerate(columns):
-        if not np.isfinite(col.standard_deviation) or col.standard_deviation <= 0:
+
+    deviations = [col.standard_deviation for col in columns]
+    for index, deviation in enumerate(deviations):
+        if not np.isfinite(deviation) or deviation <= 0:
             raise ValueError(f"Column {index} has zero or undefined deviation")
 
-    data, deviations, directional = _prepare_data(columns)
+    data = np.array(tuple(col.np_array for col in columns), dtype=np.float32).T
+    directional = [i for i, col in enumerate(columns) if col.directional]
+
     indices = _select_indices(
-        data, deviations, directional, int(n_clusters), int(seed_index)
+        data,
+        deviations,
+        directional,
+        n_clusters,
+        seed_index,
+        show_progress=show_progress,
     )
+
     return data[indices], indices

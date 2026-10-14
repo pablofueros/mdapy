@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from mdapy import DataColumn, max_diss_alg
-from mdapy.legacy import max_diss_alg as legacy_max_diss_alg
 
 
 @pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
@@ -51,16 +50,29 @@ def test_column_public_properties_cannot_be_reassigned(attribute, replacement):
         setattr(column, attribute, replacement)
 
 
-def test_column_api_selects_same_points_as_legacy(capsys):
+def test_column_api_selects_expected_points_without_progress(capsys):
     values = [0, 2, 5, 9]
     selected, indices = max_diss_alg(DataColumn(values), n_clusters=3)
-    legacy_selected, legacy_indices = legacy_max_diss_alg(
-        (values,), 3, show_progress=False
-    )
 
-    assert indices == [0, 3, 2] == legacy_indices
-    np.testing.assert_array_equal(selected, legacy_selected)
+    assert indices == [0, 3, 2]
+    np.testing.assert_array_equal(selected[:, 0], [0, 9, 5])
     assert capsys.readouterr().out == ""
+
+
+def test_column_api_can_show_progress(capsys):
+    max_diss_alg(DataColumn([0, 1, 2]), n_clusters=2, show_progress=True)
+
+    assert "Finding cluster nº2" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("show_progress", [1, None])
+def test_column_api_rejects_non_boolean_progress(show_progress):
+    with pytest.raises(TypeError, match="show_progress must be a bool"):
+        max_diss_alg(
+            DataColumn([0, 1, 2]),
+            n_clusters=2,
+            show_progress=show_progress,
+        )
 
 
 def test_directional_column_uses_shortest_angular_distance():
@@ -69,7 +81,7 @@ def test_directional_column_uses_shortest_angular_distance():
     assert indices == [0, 2]
 
 
-def test_mixed_columns_match_legacy_selection():
+def test_mixed_columns_select_expected_points():
     heights = [1.0, 2.0, 5.0, 3.0]
     directions = [350.0, 10.0, 180.0, 90.0]
     selected, indices = max_diss_alg(
@@ -78,11 +90,9 @@ def test_mixed_columns_match_legacy_selection():
         n_clusters=3,
         seed_index=1,
     )
-    legacy_selected, legacy_indices = legacy_max_diss_alg(
-        (heights, directions), 3, seed_index=1, dir_indices=[1], show_progress=False
-    )
-    assert indices == legacy_indices
-    np.testing.assert_array_equal(selected, legacy_selected)
+
+    assert indices == [1, 2, 3]
+    np.testing.assert_array_equal(selected, [[2, 10], [5, 180], [3, 90]])
 
 
 def test_seed_index_changes_selection_order():
@@ -127,23 +137,37 @@ def test_rescaling_one_column_preserves_selection_order():
 
 
 @pytest.mark.parametrize(
-    "args, kwargs",
+    "args, kwargs, message",
     [
-        ((([0, 1, 2],), 2), {}),
-        ((([0, 1, 2],),), {"n_clusters": 2}),
-        ((), {"data_tuple": ([0, 1, 2],), "n_clusters": 2}),
-        ((([0, 1, 2],),), {"n_clusters": 2, "dir_indices": [0]}),
+        (
+            (([0, 1, 2],), 2),
+            {},
+            "required keyword-only argument: 'n_clusters'",
+        ),
+        (
+            (([0, 1, 2],),),
+            {"n_clusters": 2},
+            "from mdapy.legacy import max_diss_alg",
+        ),
+        (
+            (),
+            {"data_tuple": ([0, 1, 2],), "n_clusters": 2},
+            "from mdapy.legacy import max_diss_alg",
+        ),
+        (
+            (([0, 1, 2],),),
+            {"n_clusters": 2, "dir_indices": [0]},
+            "from mdapy.legacy import max_diss_alg",
+        ),
     ],
 )
-def test_old_api_call_points_to_legacy(args, kwargs):
-    with pytest.raises(TypeError, match="from mdapy.legacy import max_diss_alg"):
+def test_old_api_call_points_to_legacy(args, kwargs, message):
+    with pytest.raises(TypeError, match=message):
         max_diss_alg(*args, **kwargs)
 
 
-def test_column_api_rejects_missing_or_out_of_range_cluster_count():
+def test_column_api_rejects_out_of_range_cluster_count():
     column = DataColumn([0, 1, 2])
-    with pytest.raises(TypeError, match="n_clusters is required"):
-        max_diss_alg(column)
     with pytest.raises(ValueError, match="n_clusters must be between"):
         max_diss_alg(column, n_clusters=4)
 
@@ -153,18 +177,23 @@ def test_column_api_rejects_invalid_columns():
         max_diss_alg(DataColumn([0, 1]), DataColumn([0, 1, 2]), n_clusters=1)
     with pytest.raises(ValueError, match="finite"):
         DataColumn([0, np.inf])
+    empty = DataColumn([])
+    with pytest.raises(ValueError, match="n_clusters must be between"):
+        max_diss_alg(empty, n_clusters=1)
+
+
+@pytest.mark.parametrize("directional", [False, True])
+def test_algorithm_rejects_zero_deviation(directional):
+    column = DataColumn([1, 1], directional=directional)
     with pytest.raises(ValueError, match="zero or undefined deviation"):
-        max_diss_alg(DataColumn([1, 1]), n_clusters=1)
+        max_diss_alg(column, n_clusters=1)
 
 
 @pytest.mark.parametrize("scale", [1e-30, 1e20])
 def test_deviation_is_calculated_before_float32_conversion(scale):
     values = np.array([0, scale, 2 * scale], dtype=np.float64)
     selected, indices = max_diss_alg(DataColumn(values), n_clusters=3)
-    legacy_selected, legacy_indices = legacy_max_diss_alg(
-        (values,), 3, show_progress=False
-    )
 
-    assert indices == legacy_indices == [0, 2, 1]
+    assert indices == [0, 2, 1]
     assert selected.dtype == np.float32
-    np.testing.assert_array_equal(selected, legacy_selected)
+    np.testing.assert_array_equal(selected[:, 0], values[indices].astype(np.float32))

@@ -58,8 +58,8 @@ angles in degrees. `n_clusters` is required and must be between 1 and the
 number of observations; `seed_index` must be a valid input position.
 
 Each `DataColumn` owns a copy of its input, preserving the input dtype.
-Changing the original array does not change the column. Its `np_array`
-property returns a read-only view, and neither `np_array` nor `directional`
+Changing the original array does not change the column. Its `values`
+property returns a read-only view, and neither `values` nor `directional`
 can be reassigned. Create a new `DataColumn` to use different values or a
 different directional interpretation. This keeps its cached standard
 deviation consistent with its data; it requires an additional copy per column.

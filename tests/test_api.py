@@ -13,12 +13,12 @@ def test_column_owns_data_and_keeps_cached_deviation_consistent(dtype, direction
     column = DataColumn(values, directional=directional)
     deviation = column.standard_deviation
 
-    assert column.np_array.dtype == values.dtype
-    assert not np.shares_memory(column.np_array, values)
+    assert column.values.dtype == values.dtype
+    assert not np.shares_memory(column.values, values)
     assert values.flags.writeable
     values[:] = 0
 
-    np.testing.assert_array_equal(column.np_array, original)
+    np.testing.assert_array_equal(column.values, original)
     assert column.standard_deviation == deviation
     points, indices = max_diss_alg(column, n_clusters=3)
     assert indices == expected_indices
@@ -30,19 +30,19 @@ def test_column_owns_data_and_keeps_cached_deviation_consistent(dtype, direction
 def test_column_rejects_writes_through_public_array():
     column = DataColumn([0, 2, 5, 9])
     deviation = column.standard_deviation
-    values = column.np_array
+    values = column.values
 
     with pytest.raises(ValueError, match="read-only"):
         values[0] = 100
     with pytest.raises(ValueError, match="WRITEABLE"):
         values.setflags(write=True)
 
-    np.testing.assert_array_equal(column.np_array, [0, 2, 5, 9])
+    np.testing.assert_array_equal(column.values, [0, 2, 5, 9])
     assert column.standard_deviation == deviation
 
 
 @pytest.mark.parametrize(
-    "attribute, replacement", [("np_array", np.array([1, 2, 3])), ("directional", True)]
+    "attribute, replacement", [("values", np.array([1, 2, 3])), ("directional", True)]
 )
 def test_column_public_properties_cannot_be_reassigned(attribute, replacement):
     column = DataColumn([0, 1, 2])

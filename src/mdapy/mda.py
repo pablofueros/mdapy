@@ -30,7 +30,7 @@ class DataColumn:
         self._directional = directional
 
     @property
-    def np_array(self) -> NDArray:
+    def values(self) -> NDArray:
         """Return a read-only view backed by the column's protected copy."""
         return self._values.view()
 
@@ -45,8 +45,8 @@ class DataColumn:
     @cached_property
     def standard_deviation(self) -> float:
         if self.directional:
-            return float(circstd(self.np_array, high=360, low=0))
-        return float(np.std(self.np_array))
+            return float(circstd(self.values, high=360, low=0))
+        return float(np.std(self.values))
 
 
 _LEGACY_HINT = (
@@ -114,7 +114,7 @@ def max_diss_alg(
         if not np.isfinite(deviation) or deviation <= 0:
             raise ValueError(f"Column {index} has zero or undefined deviation")
 
-    data = np.array(tuple(col.np_array for col in columns), dtype=np.float32).T
+    data = np.array(tuple(col.values for col in columns), dtype=np.float32).T
     directional = [i for i, col in enumerate(columns) if col.directional]
 
     indices = _select_indices(

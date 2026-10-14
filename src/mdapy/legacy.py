@@ -5,8 +5,8 @@ from numbers import Integral
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from .mda import DataColumn
-from .mda import max_diss_alg as _current_max_diss_alg
+from .api import DataColumn
+from .api import max_diss_alg as _current_max_diss_alg
 
 
 def max_diss_alg(

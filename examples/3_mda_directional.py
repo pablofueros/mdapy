@@ -1,20 +1,21 @@
 """Compare linear and directional interpretations of angular values."""
 
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from mdapy import DataColumn, max_diss_alg
 
-plt.rcParams["toolbar"] = "None"
+PAGE_COLOR = "#e9edf2"
+PLOT_COLOR = "#f2f4f7"
+GRID_COLOR = "#c8d0da"
 
 angles = np.array([350.0, 10.0, 180.0, 90.0])
 seed_index = 0
 n_clusters = 3
 
 linear_selected, linear_indices = max_diss_alg(
-    DataColumn(angles),
-    n_clusters=n_clusters,
-    seed_index=seed_index,
+    DataColumn(angles), n_clusters=n_clusters, seed_index=seed_index
 )
 directional_selected, directional_indices = max_diss_alg(
     DataColumn(angles, directional=True),
@@ -31,83 +32,113 @@ assert directional_indices == [0, 2, 3]
 np.testing.assert_array_equal(linear_selected[:, 0], angles[linear_indices])
 np.testing.assert_array_equal(directional_selected[:, 0], angles[directional_indices])
 
-theta = np.deg2rad(angles)
-radius = np.ones_like(theta)
 candidate_mask = np.arange(len(angles)) != seed_index
 
 
-def plot_selection(ax, indices: list[int], title: str) -> None:
-    ax.scatter(
-        theta[candidate_mask],
-        radius[candidate_mask],
-        color="0.78",
-        edgecolor="0.45",
-        s=90,
-        zorder=2,
+def add_selection(fig: go.Figure, indices: list[int], column: int) -> None:
+    """Add one interpretation of the angular selection to a polar subplot."""
+    fig.add_trace(
+        go.Scatterpolar(
+            theta=angles[candidate_mask],
+            r=np.ones(candidate_mask.sum()),
+            mode="markers",
+            name="Observations",
+            legendgroup="observations",
+            showlegend=column == 1,
+            marker={
+                "color": "#aeb7c2",
+                "line": {"color": "#6f7b87", "width": 1},
+                "size": 13,
+            },
+            hovertemplate="Angle=%{theta:.0f}°<extra></extra>",
+        ),
+        row=1,
+        col=column,
     )
-    ax.scatter(
-        theta[indices[1:]],
-        radius[indices[1:]],
-        color="0.18",
-        edgecolor="0.05",
-        linewidth=0.8,
-        s=100,
-        zorder=3,
+    fig.add_trace(
+        go.Scatterpolar(
+            theta=angles[indices[1:]],
+            r=np.ones(len(indices) - 1),
+            mode="markers+text",
+            name="Selected observations",
+            legendgroup="selected",
+            showlegend=column == 1,
+            text=[str(order) for order in range(2, len(indices) + 1)],
+            textposition="top center",
+            marker={
+                "color": "#263746",
+                "line": {"color": "#101820", "width": 1},
+                "size": 14,
+            },
+            hovertemplate="Selection %{text}<br>Angle=%{theta:.0f}°<extra></extra>",
+        ),
+        row=1,
+        col=column,
     )
-    ax.scatter(
-        theta[seed_index],
-        radius[seed_index],
-        color="white",
-        edgecolor="0.05",
-        linewidth=1.2,
-        marker="*",
-        s=190,
-        zorder=4,
+    fig.add_trace(
+        go.Scatterpolar(
+            theta=[angles[seed_index]],
+            r=[1],
+            mode="markers+text",
+            name="Seed",
+            legendgroup="seed",
+            showlegend=column == 1,
+            text=["1"],
+            textposition="top center",
+            marker={
+                "color": "#f7f8fa",
+                "line": {"color": "#101820", "width": 1.5},
+                "size": 17,
+                "symbol": "star",
+            },
+            hovertemplate="Seed · selection 1<br>Angle=%{theta:.0f}°<extra></extra>",
+        ),
+        row=1,
+        col=column,
     )
 
-    for order, index in enumerate(indices, start=1):
-        ax.annotate(
-            str(order),
-            (theta[index], radius[index]),
-            xytext=(0, 15),
-            textcoords="offset points",
-            ha="center",
-            va="bottom",
-            fontsize=9,
-        )
 
-    ax.set_title(title, fontsize=12, pad=12)
-    ax.set(
-        rlim=(0.72, 1.2),
-        rticks=[],
-    )
-    ax.set_thetagrids([0, 90, 180, 270], labels=["", "90°", "180°", "270°"])
-    ax.set_theta_zero_location("N")
-    ax.set_theta_direction(-1)
-    ax.grid(color="0.88", linewidth=0.8)
-    ax.spines["polar"].set_color("0.55")
-
-
-fig, axes = plt.subplots(
-    1,
-    2,
-    figsize=(9, 5.5),
-    subplot_kw={"projection": "polar"},
+fig = make_subplots(
+    rows=1,
+    cols=2,
+    specs=[[{"type": "polar"}, {"type": "polar"}]],
+    subplot_titles=("Linear", "Directional"),
 )
-plot_selection(axes[0], linear_indices, "Linear")
-plot_selection(axes[1], directional_indices, "Directional")
+add_selection(fig, linear_indices, 1)
+add_selection(fig, directional_indices, 2)
 
-fig.suptitle("Selection order from a 350° seed", fontsize=13, y=0.96)
-fig.text(
-    0.5,
-    0.055,
-    "Linear values place 10° far from 350°. As directions, their shortest "
-    "distance is only 20°, so 180° is selected next.",
-    ha="center",
-    va="center",
-    fontsize=9,
-    color="0.25",
+polar_style = {
+    "bgcolor": PLOT_COLOR,
+    "angularaxis": {
+        "direction": "clockwise",
+        "rotation": 90,
+        "gridcolor": GRID_COLOR,
+    },
+    "radialaxis": {
+        "range": [0.72, 1.2],
+        "showticklabels": False,
+        "gridcolor": GRID_COLOR,
+    },
+}
+fig.update_layout(
+    template="plotly_white",
+    paper_bgcolor=PAGE_COLOR,
+    title={"text": "Selection order from a 350° seed", "x": 0.5, "xanchor": "center"},
+    polar=polar_style,
+    polar2=polar_style,
+    legend={"orientation": "h", "y": -0.03, "x": 0.5, "xanchor": "center"},
+    margin={"t": 100, "b": 120},
 )
-fig.subplots_adjust(left=0.06, right=0.94, top=0.84, bottom=0.16, wspace=0.3)
+fig.add_annotation(
+    text=(
+        "Linear values place 10° far from 350°. As directions, their shortest "
+        "distance is only 20°, so 180° is selected next."
+    ),
+    x=0.5,
+    y=-0.16,
+    xref="paper",
+    yref="paper",
+    showarrow=False,
+)
 
-plt.show()
+fig.show()

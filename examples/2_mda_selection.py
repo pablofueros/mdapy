@@ -1,12 +1,13 @@
-"""Visualize the selection order in a two-dimensional dataset."""
+"""Visualize the selection order with an interactive Plotly animation."""
 
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import Button
+import plotly.graph_objects as go
 
 from mdapy import DataColumn, max_diss_alg
 
-plt.rcParams["toolbar"] = "None"
+PAGE_COLOR = "#e9edf2"
+PLOT_COLOR = "#f2f4f7"
+GRID_COLOR = "#c8d0da"
 
 rng = np.random.default_rng(42)
 points = np.vstack(
@@ -27,166 +28,137 @@ selected, indices = max_diss_alg(
     seed_index=seed_index,
 )
 
-fig, ax = plt.subplots(figsize=(9, 6))
 candidate_mask = np.arange(len(points)) != seed_index
-ax.scatter(
-    points[candidate_mask, 0],
-    points[candidate_mask, 1],
-    color="0.82",
-    s=16,
-)
-selection = ax.scatter(
-    [],
-    [],
-    color="0.18",
-    edgecolor="0.05",
-    linewidth=0.8,
-    s=55,
-)
-ax.scatter(
-    selected[0, 0],
-    selected[0, 1],
-    color="white",
-    edgecolor="0.05",
-    linewidth=1.2,
-    marker="*",
-    s=150,
-    zorder=3,
-)
+selection_order = [str(order) for order in range(2, len(selected) + 1)]
 
-annotations = [
-    ax.annotate(
-        str(order),
-        (x, y),
-        xytext=(5, 5),
-        textcoords="offset points",
-        fontsize=9,
-        visible=order == 1,
+
+def observations_trace() -> go.Scatter:
+    """Build the background sample shown in every animation frame."""
+    return go.Scatter(
+        x=points[candidate_mask, 0],
+        y=points[candidate_mask, 1],
+        mode="markers",
+        name="Observations",
+        marker={"color": "#aeb7c2", "size": 7},
+        hovertemplate="x=%{x:.3f}<br>y=%{y:.3f}<extra></extra>",
     )
-    for order, (x, y) in enumerate(selected, start=1)
-]
-
-visible_count = [1]
-playing = [False]
 
 
-def update_plot() -> None:
-    count = visible_count[0]
-    selection.set_offsets(selected[1:count])
-    for position, annotation in enumerate(annotations, start=1):
-        annotation.set_visible(position <= count)
-    ax.set_title(
-        f"Selection {count}/{len(selected)}",
-        fontsize=13,
-        loc="left",
-        pad=10,
+def selection_trace(count: int) -> go.Scatter:
+    """Build the selected-observation trace for one animation frame."""
+    return go.Scatter(
+        x=selected[1:count, 0],
+        y=selected[1:count, 1],
+        mode="markers+text",
+        name="Selected observations",
+        text=selection_order[: count - 1],
+        textposition="top right",
+        marker={
+            "color": "#263746",
+            "line": {"color": "#101820", "width": 1},
+            "size": 11,
+        },
+        hovertemplate="Selection %{text}<br>x=%{x:.3f}<br>y=%{y:.3f}<extra></extra>",
     )
-    fig.canvas.draw_idle()
 
 
-def pause() -> None:
-    timer.stop()
-    playing[0] = False
-    play_button.label.set_text("Play")
-    fig.canvas.draw_idle()
+def seed_trace() -> go.Scatter:
+    """Build the seed trace shown in every animation frame."""
+    return go.Scatter(
+        x=[selected[0, 0]],
+        y=[selected[0, 1]],
+        mode="markers+text",
+        name="Seed",
+        text=["1"],
+        textposition="top right",
+        marker={
+            "color": "#f7f8fa",
+            "line": {"color": "#101820", "width": 1.5},
+            "size": 16,
+            "symbol": "star",
+        },
+        hovertemplate="Seed · selection 1<br>x=%{x:.3f}<br>y=%{y:.3f}<extra></extra>",
+    )
 
 
-def advance() -> None:
-    if visible_count[0] >= len(selected):
-        pause()
-        return
-    visible_count[0] += 1
-    update_plot()
+def frame_data(count: int) -> list[go.Scatter]:
+    """Return a complete frame so animation never drops the sample."""
+    return [observations_trace(), selection_trace(count), seed_trace()]
 
 
-def show_previous(_event: object) -> None:
-    pause()
-    visible_count[0] = max(1, visible_count[0] - 1)
-    update_plot()
-
-
-def show_next(_event: object) -> None:
-    pause()
-    advance()
-
-
-def toggle_play(_event: object) -> None:
-    if playing[0]:
-        pause()
-        return
-    if visible_count[0] >= len(selected):
-        visible_count[0] = 1
-        update_plot()
-    playing[0] = True
-    play_button.label.set_text("Pause")
-    fig.canvas.draw_idle()
-    timer.start()
-
-
-def reset(_event: object) -> None:
-    pause()
-    visible_count[0] = 1
-    update_plot()
-
-
-fig.text(
-    0.5,
-    0.145,
-    "Gray: observations · Dark: selected observations · Star: seed · "
-    "Numbers: selection order",
-    ha="center",
-    fontsize=9,
-    color="0.25",
-)
-fig.subplots_adjust(left=0.1, right=0.97, top=0.92, bottom=0.24)
-previous_button = Button(
-    fig.add_axes((0.18, 0.055, 0.14, 0.05)),
-    "Previous",
-    color="0.96",
-    hovercolor="0.88",
-)
-next_button = Button(
-    fig.add_axes((0.35, 0.055, 0.14, 0.05)),
-    "Next",
-    color="0.96",
-    hovercolor="0.88",
-)
-play_button = Button(
-    fig.add_axes((0.52, 0.055, 0.14, 0.05)),
-    "Play",
-    color="0.96",
-    hovercolor="0.88",
-)
-reset_button = Button(
-    fig.add_axes((0.69, 0.055, 0.14, 0.05)),
-    "Reset",
-    color="0.96",
-    hovercolor="0.88",
+fig = go.Figure(
+    data=frame_data(1),
+    frames=[
+        go.Frame(
+            data=frame_data(count),
+            name=str(count),
+            layout={"title": {"text": f"Selection {count}/{len(selected)}"}},
+        )
+        for count in range(1, len(selected) + 1)
+    ],
 )
 
-for button in (previous_button, next_button, play_button, reset_button):
-    button.label.set_fontsize(9)
-    for spine in button.ax.spines.values():
-        spine.set_color("0.65")
-        spine.set_linewidth(0.8)
-
-previous_button.on_clicked(show_previous)
-next_button.on_clicked(show_next)
-play_button.on_clicked(toggle_play)
-reset_button.on_clicked(reset)
-
-timer = fig.canvas.new_timer(interval=800)
-timer.add_callback(advance)
-
-ax.set(
-    xlabel="First variable",
-    ylabel="Second variable",
+fig.update_layout(
+    template="plotly_white",
+    paper_bgcolor=PAGE_COLOR,
+    plot_bgcolor=PLOT_COLOR,
+    title={"text": f"Selection 1/{len(selected)}", "x": 0.05},
+    xaxis={"title": "First variable", "gridcolor": GRID_COLOR},
+    yaxis={"title": "Second variable", "gridcolor": GRID_COLOR},
+    legend={"orientation": "h", "y": 1.08, "x": 1, "xanchor": "right"},
+    margin={"t": 110, "b": 100},
+    updatemenus=[
+        {
+            "type": "buttons",
+            "direction": "left",
+            "x": 0,
+            "y": -0.16,
+            "buttons": [
+                {
+                    "label": "Play",
+                    "method": "animate",
+                    "args": [
+                        None,
+                        {
+                            "frame": {"duration": 800, "redraw": True},
+                            "transition": {"duration": 200},
+                            "fromcurrent": True,
+                        },
+                    ],
+                },
+                {
+                    "label": "Pause",
+                    "method": "animate",
+                    "args": [[None], {"frame": {"duration": 0}, "mode": "immediate"}],
+                },
+            ],
+        }
+    ],
+    sliders=[
+        {
+            "active": 0,
+            "currentvalue": {"prefix": "Selection: "},
+            "pad": {"t": 45},
+            "steps": [
+                {
+                    "label": str(count),
+                    "method": "animate",
+                    "args": [
+                        [str(count)],
+                        {
+                            "frame": {"duration": 0, "redraw": True},
+                            "mode": "immediate",
+                            "transition": {"duration": 0},
+                        },
+                    ],
+                }
+                for count in range(1, len(selected) + 1)
+            ],
+        }
+    ],
 )
-ax.spines[["top", "right"]].set_visible(False)
-ax.tick_params(labelsize=9)
-update_plot()
 
 print(f"Seed index: {seed_index}")
 print(f"Selected indices: {indices}")
 
-plt.show()
+fig.show()

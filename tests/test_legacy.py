@@ -16,7 +16,7 @@ def test_legacy_api_adapts_tuple_seed_and_directional_indices(capsys):
     )
 
     assert indices == [1, 2, 3]
-    assert selected.dtype == np.float32
+    assert selected.dtype == np.float64
     np.testing.assert_array_equal(selected, [[2, 10], [5, 180], [3, 90]])
     assert capsys.readouterr().out == ""
 

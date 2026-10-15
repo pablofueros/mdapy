@@ -42,10 +42,9 @@ In this case, directional variables can also be considered, in which case, the d
 3. Select the observation with the greatest nearest distance. Repeat until `n_clusters` observations have been selected.
 
 Distances are Euclidean after dividing each column's difference by its
-standard deviation and `sqrt(2)`. Directional differences use the shortest
-arc in degrees, and their standard deviation is circular. If two candidates
-have exactly the same distance, the one appearing first in the input is
-selected.
+standard deviation. Directional differences use the shortest arc in degrees,
+and their standard deviation is circular. If two candidates have exactly the
+same distance, the one appearing first in the input is selected.
 
 ---
 
@@ -79,11 +78,11 @@ points, indices = max_diss_alg(
 )
 ```
 
-Standard deviations are calculated using the input dtype, as in the legacy API.
-The working matrix is then converted to `float32`. `points` is a `float32` NumPy array
-of shape `(n_clusters, n_columns)` in selection order.
-`indices` is a list of positions in the original input. The first position is
-`seed_index` (default `0`).
+Standard deviations are calculated using each column's input dtype. NumPy
+chooses a common dtype for the working matrix without an explicit precision
+conversion, and `points` keeps that dtype. It has shape
+`(n_clusters, n_columns)` in selection order. `indices` is a list of positions
+in the original input. The first position is `seed_index` (default `0`).
 
 ### Legacy tuple API
 

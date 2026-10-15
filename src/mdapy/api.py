@@ -61,7 +61,7 @@ def max_diss_alg(
     seed_index: int = 0,
     show_progress: bool = False,
     **kwargs: object,
-) -> tuple[NDArray[np.float32], list[int]]:
+) -> tuple[NDArray, list[int]]:
     """Select maximally dissimilar observations.
 
     Parameters
@@ -78,7 +78,7 @@ def max_diss_alg(
 
     Returns
     -------
-    selected_data : NDArray[np.float32]
+    selected_data : NDArray
         Selected observations in selection order.
     selected_indices : list[int]
         Indices of the selected observations in the original data.
@@ -114,7 +114,7 @@ def max_diss_alg(
         if not np.isfinite(deviation) or deviation <= 0:
             raise ValueError(f"Column {index} has zero or undefined deviation")
 
-    data = np.array(tuple(col.values for col in columns), dtype=np.float32).T
+    data = np.column_stack(tuple(col.values for col in columns))
     directional = [i for i, col in enumerate(columns) if col.directional]
 
     indices = _select_indices(

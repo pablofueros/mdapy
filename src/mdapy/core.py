@@ -5,34 +5,20 @@ from numpy.typing import NDArray
 
 
 def _distances_to_point(
-    data: NDArray[np.float32],
+    data: NDArray,
     point_index: int,
-    denominators: NDArray[np.float64],
+    deviations: list[float],
     dir_indices: list[int] | None,
-) -> NDArray[np.float64]:
-    """Vectorize differences while preserving the historical norm reduction."""
-    point = data[point_index]
-    # Contiguous rows keep the same dot-product layout as the scalar reference.
-    normalized = np.empty(data.shape, dtype=np.float32)
-    for column in range(data.shape[1]):
-        difference = data[:, column] - point[column]
-        if dir_indices is not None and column in dir_indices:
-            # NumPy 1.x and 2.x promote scalar float32 + integer differently.
-            angular_dtype = np.asarray(np.float32(0) + 180).dtype
-            difference = (difference.astype(angular_dtype) + 180) % 360 - 180
-        # Scalar normalization uses float64 before storing back into float32.
-        normalized[:, column] = difference.astype(np.float64) / denominators[column]
-
-    # norm(axis=1) uses a different reduction and can alter float32 near ties.
-    return np.fromiter(
-        (np.linalg.norm(row) for row in normalized),
-        dtype=np.float64,
-        count=len(data),
-    )
+) -> NDArray:
+    """Calculate every observation's distance to one selected point."""
+    differences = data - data[point_index]
+    for column in dir_indices or []:
+        differences[:, column] = (differences[:, column] + 180) % 360 - 180
+    return np.linalg.norm(differences / deviations, axis=1)
 
 
 def _select_indices(
-    data: NDArray[np.float32],
+    data: NDArray,
     deviations: list[float],
     dir_indices: list[int] | None,
     n_clusters: int,
@@ -45,10 +31,9 @@ def _select_indices(
     selected = np.zeros(len(data), dtype=bool)
     selected[seed_index] = True
     nearest = np.full(len(data), np.inf)
-    denominators = np.sqrt(2) * np.asarray(deviations, dtype=np.float64)
 
     while len(indices) < n_clusters:
-        distances = _distances_to_point(data, indices[-1], denominators, dir_indices)
+        distances = _distances_to_point(data, indices[-1], deviations, dir_indices)
         np.minimum(nearest, distances, out=nearest)
         # Negative infinity excludes selected rows even when all others coincide.
         nearest[selected] = -np.inf

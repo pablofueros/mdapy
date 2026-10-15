@@ -2,7 +2,6 @@
 
 from numbers import Integral
 
-import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .api import DataColumn
@@ -15,7 +14,7 @@ def max_diss_alg(
     seed_index: int = 0,
     dir_indices: list[int] | None = None,
     show_progress: bool = False,
-) -> tuple[NDArray[np.float32], list[int]]:
+) -> tuple[NDArray, list[int]]:
     """Select maximally dissimilar observations using the tuple-based API.
 
     This compatibility wrapper converts the input arrays into `DataColumn`
@@ -36,7 +35,7 @@ def max_diss_alg(
 
     Returns
     -------
-    selected_data : NDArray[np.float32]
+    selected_data : NDArray
         Selected observations in selection order.
     selected_indices : list[int]
         Indices of the selected observations in the original data.

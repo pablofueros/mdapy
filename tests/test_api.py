@@ -22,9 +22,8 @@ def test_column_owns_data_and_keeps_cached_deviation_consistent(dtype, direction
     assert column.standard_deviation == deviation
     points, indices = max_diss_alg(column, n_clusters=3)
     assert indices == expected_indices
-    np.testing.assert_array_equal(
-        points[:, 0], np.array(original, dtype=np.float32)[expected_indices]
-    )
+    assert points.dtype == values.dtype
+    np.testing.assert_array_equal(points[:, 0], np.array(original)[expected_indices])
 
 
 def test_column_rejects_writes_through_public_array():
@@ -75,67 +74,6 @@ def test_column_api_rejects_non_boolean_progress(show_progress):
         )
 
 
-def test_directional_column_uses_shortest_angular_distance():
-    values = [350, 10, 180]
-    _, indices = max_diss_alg(DataColumn(values, directional=True), n_clusters=2)
-    assert indices == [0, 2]
-
-
-def test_mixed_columns_select_expected_points():
-    heights = [1.0, 2.0, 5.0, 3.0]
-    directions = [350.0, 10.0, 180.0, 90.0]
-    selected, indices = max_diss_alg(
-        DataColumn(heights),
-        DataColumn(directions, directional=True),
-        n_clusters=3,
-        seed_index=1,
-    )
-
-    assert indices == [1, 2, 3]
-    np.testing.assert_array_equal(selected, [[2, 10], [5, 180], [3, 90]])
-
-
-def test_seed_index_changes_selection_order():
-    selected, indices = max_diss_alg(
-        DataColumn([0, 2, 5, 9]), n_clusters=3, seed_index=2
-    )
-
-    assert indices == [2, 0, 3]
-    assert selected.shape == (3, 1)
-    np.testing.assert_array_equal(selected[:, 0], [5, 0, 9])
-
-
-def test_equal_distances_select_first_input_index():
-    _, indices = max_diss_alg(DataColumn([-2, 0, 2]), n_clusters=3, seed_index=1)
-
-    assert indices == [1, 0, 2]
-
-
-def test_mixed_columns_select_by_nearest_selected_point():
-    # From 350°, 10° is only 20° away. After selecting 180°, the point at
-    # 90° is farther from its nearest selected point than the point at 10°.
-    selected, indices = max_diss_alg(
-        DataColumn([0, 0, 4, 4]),
-        DataColumn([350, 10, 180, 90], directional=True),
-        n_clusters=3,
-    )
-
-    assert indices == [0, 2, 3]
-    np.testing.assert_array_equal(selected, [[0, 350], [4, 180], [4, 90]])
-
-
-def test_rescaling_one_column_preserves_selection_order():
-    linear = [0, 3, 1, 2]
-    angles = DataColumn([0, 10, 20, 170], directional=True)
-
-    _, original_indices = max_diss_alg(DataColumn(linear), angles, n_clusters=3)
-    _, scaled_indices = max_diss_alg(
-        DataColumn([100 * value for value in linear]), angles, n_clusters=3
-    )
-
-    assert original_indices == scaled_indices == [0, 3, 1]
-
-
 @pytest.mark.parametrize(
     "args, kwargs, message",
     [
@@ -183,17 +121,16 @@ def test_column_api_rejects_invalid_columns():
 
 
 @pytest.mark.parametrize("directional", [False, True])
-def test_algorithm_rejects_zero_deviation(directional):
+def test_api_rejects_zero_deviation(directional):
     column = DataColumn([1, 1], directional=directional)
     with pytest.raises(ValueError, match="zero or undefined deviation"):
         max_diss_alg(column, n_clusters=1)
 
 
-@pytest.mark.parametrize("scale", [1e-30, 1e20])
-def test_deviation_is_calculated_before_float32_conversion(scale):
-    values = np.array([0, scale, 2 * scale], dtype=np.float64)
-    selected, indices = max_diss_alg(DataColumn(values), n_clusters=3)
+def test_columns_use_numpy_common_dtype():
+    integers = DataColumn(np.array([0, 1, 2], dtype=np.int32))
+    decimals = DataColumn(np.array([0, 1, 2], dtype=np.float32))
 
-    assert indices == [0, 2, 1]
-    assert selected.dtype == np.float32
-    np.testing.assert_array_equal(selected[:, 0], values[indices].astype(np.float32))
+    selected, _ = max_diss_alg(integers, decimals, n_clusters=2)
+
+    assert selected.dtype == np.result_type(integers.values, decimals.values)

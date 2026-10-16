@@ -6,17 +6,19 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
+
 dependencies = [
-    "numpy>=1.26",
-    "scipy>=1.11.2",
+    "numpy>=1.26,<3",
+    "scipy>=1.11.2,<2",
 ]
+
 [dependency-groups]
 dev = [
-    "ipykernel>=6.29.5",
     "plotly>=7.1,<8",
-    "pytest>=7.0",
-    "pytest-cov>=4.1",
+    "pytest>=7.0,<10",
+    "pytest-cov>=4.1,<7",
+    "ruff>=0.16.10,<1",
     "ty>=0.0.85,<1.0",
 ]
 
@@ -33,5 +35,4 @@ Issues = "https://github.com/pablofueros/mdapy-v2/issues"
 "Original project" = "https://github.com/IHCantabria/mdapy"
 
 [tool.ruff]
-lint.extend-select = ["F", "I"]
-force-exclude = true
+lint.extend-select = ["I"]

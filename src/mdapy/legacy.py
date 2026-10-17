@@ -1,29 +1,11 @@
-"""Tuple-based compatibility API; historical cores live in benchmarks/."""
+"""Tuple-based compatibility API for selecting maximally dissimilar observations."""
 
-import numpy as np
+from numbers import Integral
+
 from numpy.typing import ArrayLike, NDArray
-from scipy.stats import circstd
 
-from .core import _select_indices
-
-
-def preprocess(data_tuple: tuple[ArrayLike, ...]) -> NDArray:
-    return np.array(data_tuple, dtype=np.float32).T
-
-
-def std_list(
-    data_tuple: tuple[ArrayLike, ...],
-    dir_indices: list[int] | None,
-) -> list[float]:
-    return_list = []
-    for ind, array in enumerate(data_tuple):
-        array = np.asarray(array)
-        if dir_indices is not None and ind in dir_indices:
-            computed_std = circstd(array, high=360, low=0)
-        else:
-            computed_std = np.std(array)
-        return_list.append(computed_std)
-    return return_list
+from .api import DataColumn
+from .api import max_diss_alg as _current_max_diss_alg
 
 
 def max_diss_alg(
@@ -31,45 +13,49 @@ def max_diss_alg(
     n_clusters: int,
     seed_index: int = 0,
     dir_indices: list[int] | None = None,
-    *,
-    show_progress: bool = True,
+    show_progress: bool = False,
 ) -> tuple[NDArray, list[int]]:
-    """
-    This function implements the Maximum Dissimilarity Algorithm (MDA) to cluster a data.
+    """Select maximally dissimilar observations using the tuple-based API.
+
+    This compatibility wrapper converts the input arrays into `DataColumn`
+    objects and delegates the selection to the current API.
 
     Parameters
     ----------
-    data_tuple : tuple[NDArray, ...]
-        A tuple of arrays with the data to cluster.
+    data_tuple : tuple[ArrayLike, ...]
+        One-dimensional arrays describing each variable.
     n_clusters : int
-        The number of clusters to generate.
+        Number of observations to select.
     seed_index : int, optional
-        The index of the seed point, by default 0
-    dir_indices : list[int], optional
-        The indices of directional arrays in the tuple, by default None
+        Index of the first selected observation, by default 0.
+    dir_indices : list[int] or None, optional
+        Indices of arrays containing angles in degrees, by default None.
     show_progress : bool, optional
-        Print progress while selecting points, by default True
+        Display selection progress, by default False.
 
     Returns
     -------
-    tuple[NDArray, list[int]]
-        A tuple with the clustered data points and their indices in the original data.
+    selected_data : NDArray
+        Selected observations in selection order.
+    selected_indices : list[int]
+        Indices of the selected observations in the original data.
     """
 
-    # Check if any of the arrays in the tuple has NaN values
-    for array in data_tuple:
-        if np.isnan(array).any():
-            raise ValueError("The data contains NaN values")
+    directional = set(dir_indices or [])
+    for index in directional:
+        if isinstance(index, bool) or not isinstance(index, Integral):
+            raise TypeError("dir_indices must contain only integers")
+        if not 0 <= index < len(data_tuple):
+            raise ValueError("dir_indices contains an out-of-bounds index")
 
-    data = preprocess(data_tuple)
-    deviations = std_list(data_tuple, dir_indices)
+    columns = tuple(
+        DataColumn(array, directional=index in directional)
+        for index, array in enumerate(data_tuple)
+    )
 
-    indices = _select_indices(
-        data,
-        deviations,
-        dir_indices,
-        n_clusters,
-        seed_index,
+    return _current_max_diss_alg(
+        *columns,
+        n_clusters=n_clusters,
+        seed_index=seed_index,
         show_progress=show_progress,
     )
-    return data[indices], indices

@@ -70,7 +70,9 @@ La evolución del algoritmo debe poder explicarse y medirse con ejemplos.
 - Usa Conventional Commits: Release Please calcula las versiones y genera `CHANGELOG.md` a partir de ellos.
 - Las versiones estables se integran mediante pull request de `develop` hacia `main`.
 - Cada push a `main` ejecuta Release Please. La pull request de release se fusiona mediante merge commit con el cuerpo vacío solo cuando se quiere publicar una versión estable.
-- Mientras la aplicación permanezca en `0.x`, `fix:` incrementa el parche, `feat:` incrementa la versión menor y `!` o `BREAKING CHANGE:` identifican un cambio incompatible que también incrementa la versión menor.
+- Sigue SemVer: `fix:` incrementa el parche, `feat:` incrementa la versión menor
+  y `!` o `BREAKING CHANGE:` identifican un cambio incompatible que incrementa
+  la versión mayor.
 - El tag `vX.Y.Z` es la fuente de verdad para la versión de la aplicación; los metadatos técnicos no se sincronizan con las releases.
 - No edites manualmente tags, GitHub Releases o entradas generadas del changelog salvo que la tarea solicite corregir o inicializar la automatización.
 - No fusiones pull requests de release ni publiques versiones sin autorización explícita.

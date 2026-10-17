@@ -1,84 +1,11 @@
-"""Tuple-based API retained for existing users and historical comparison."""
+"""Tuple-based compatibility API for selecting maximally dissimilar observations."""
 
-from functools import cache
+from numbers import Integral
 
-import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy.stats import circstd
 
-
-def distance(
-    point1: NDArray,
-    point2: NDArray,
-    dir_indices: list[int] | None,
-    std_list: list[float],
-) -> float:
-    vector = np.zeros_like(point1)
-    for ind, (p1_ind, p2_ind) in enumerate(zip(point1, point2)):
-        if dir_indices is not None and ind in dir_indices:
-            dist = ((p1_ind - p2_ind) + 180) % 360 - 180
-        else:
-            dist = p1_ind - p2_ind
-        vector[ind] = dist / (np.sqrt(2) * std_list[ind])
-    return float(np.linalg.norm(vector))
-
-
-def preprocess(data_tuple: tuple[ArrayLike, ...]) -> NDArray:
-    return np.array(data_tuple, dtype=np.float32).T
-
-
-def std_list(
-    data_tuple: tuple[ArrayLike, ...],
-    dir_indices: list[int] | None,
-) -> list[float]:
-    return_list = []
-    for ind, array in enumerate(data_tuple):
-        array = np.asarray(array)
-        if dir_indices is not None and ind in dir_indices:
-            computed_std = circstd(array, high=360, low=0)
-        else:
-            computed_std = np.std(array)
-        return_list.append(computed_std)
-    return return_list
-
-
-class DataMatrix:
-    def __init__(
-        self,
-        data_tuple: tuple[ArrayLike, ...],
-        dir_indices: list[int] | None,
-    ) -> None:
-        # Check if any of the arrays in the tuple has NaN values
-        for array in data_tuple:
-            if np.isnan(array).any():
-                raise ValueError("The data contains NaN values")
-        self.data = preprocess(data_tuple)
-        self.std_list = std_list(data_tuple, dir_indices)
-        self.dir_indices = dir_indices
-
-    def __getitem__(self, index: list[int] | int) -> NDArray:
-        return self.data[index]
-
-    @property
-    def num_points(self) -> int:
-        return len(self.data)
-
-    # Preserve the historical cache for comparisons; revisit with the algorithm.
-    @cache  # noqa: B019
-    def distance_between(self, index1: int, index2: int) -> float:
-        point1, point2 = self.data[[index1, index2]]
-        return distance(point1, point2, self.dir_indices, self.std_list)
-
-
-def distance_to_subset(
-    data_matrix: DataMatrix,
-    point_index: int,
-    subset_indices: list[int],
-) -> float:
-    distance_list = [
-        data_matrix.distance_between(point_index, i_point) for i_point in subset_indices
-    ]
-    return min(distance_list)
+from .api import DataColumn
+from .api import max_diss_alg as _current_max_diss_alg
 
 
 def max_diss_alg(
@@ -86,56 +13,49 @@ def max_diss_alg(
     n_clusters: int,
     seed_index: int = 0,
     dir_indices: list[int] | None = None,
-    *,
-    show_progress: bool = True,
+    show_progress: bool = False,
 ) -> tuple[NDArray, list[int]]:
-    """
-    This function implements the Maximum Dissimilarity Algorithm (MDA) to cluster a data.
+    """Select maximally dissimilar observations using the tuple-based API.
+
+    This compatibility wrapper converts the input arrays into `DataColumn`
+    objects and delegates the selection to the current API.
 
     Parameters
     ----------
-    data_tuple : tuple[NDArray, ...]
-        A tuple of arrays with the data to cluster.
+    data_tuple : tuple[ArrayLike, ...]
+        One-dimensional arrays describing each variable.
     n_clusters : int
-        The number of clusters to generate.
+        Number of observations to select.
     seed_index : int, optional
-        The index of the seed point, by default 0
-    dir_indices : list[int], optional
-        The indices of directional arrays in the tuple, by default None
+        Index of the first selected observation, by default 0.
+    dir_indices : list[int] or None, optional
+        Indices of arrays containing angles in degrees, by default None.
     show_progress : bool, optional
-        Print progress while selecting points, by default True
+        Display selection progress, by default False.
 
     Returns
     -------
-    tuple[NDArray, list[int]]
-        A tuple with the clustered data points and their indices in the original data.
+    selected_data : NDArray
+        Selected observations in selection order.
+    selected_indices : list[int]
+        Indices of the selected observations in the original data.
     """
 
-    # Create the data matrix
-    data_matrix = DataMatrix(data_tuple, dir_indices)
+    directional = set(dir_indices or [])
+    for index in directional:
+        if isinstance(index, bool) or not isinstance(index, Integral):
+            raise TypeError("dir_indices must contain only integers")
+        if not 0 <= index < len(data_tuple):
+            raise ValueError("dir_indices contains an out-of-bounds index")
 
-    # Initialize the centroids with the seed
-    subset_indices: list[int] = [seed_index]
+    columns = tuple(
+        DataColumn(array, directional=index in directional)
+        for index, array in enumerate(data_tuple)
+    )
 
-    while len(subset_indices) < n_clusters:
-        max_dist = next_point_index = -1
-        # Find the point with the maximum distance to the subset
-        for i_point in range(data_matrix.num_points):
-            if i_point in subset_indices:
-                continue
-            # Get the distance to the closest point in the subset
-            distance = distance_to_subset(data_matrix, i_point, subset_indices)
-            if distance > max_dist:
-                max_dist = distance
-                next_point_index = i_point
-            if show_progress:
-                progress = (i_point + 1) / data_matrix.num_points * 100
-                print(
-                    f"Finding cluster nº{len(subset_indices) + 1} --> {progress:.2f}%",
-                    end="\r",
-                )
-        # Add the point with the maximum distance to the subset
-        if next_point_index > -1:
-            subset_indices.append(next_point_index)
-
-    return data_matrix[subset_indices], subset_indices
+    return _current_max_diss_alg(
+        *columns,
+        n_clusters=n_clusters,
+        seed_index=seed_index,
+        show_progress=show_progress,
+    )

@@ -17,6 +17,10 @@ La evolución del algoritmo debe poder explicarse y medirse con ejemplos.
 - Al cambiar el algoritmo, fija primero los casos de referencia y las reglas
   numéricas: entrada, salida, orden de selección, desempates y tolerancias.
   Compara los índices seleccionados antes de afirmar que una versión equivale a otra.
+- Para medir rendimiento, registra tamaño y tipo de datos, semilla, número de
+  selecciones, entorno, tiempo de preparación y tiempo de ejecución. Conserva
+  una referencia ejecutable para comparar versiones, sin exponer implementaciones
+  históricas como API principal por accidente.
 - Respeta los cambios existentes aunque el árbol de trabajo no esté limpio.
   No borres prototipos, notebooks ni otros archivos del usuario sin explicar
   primero por qué deben salir del árbol activo.
@@ -36,6 +40,9 @@ La evolución del algoritmo debe poder explicarse y medirse con ejemplos.
 - Cada fix del algoritmo debe incorporar una prueba de regresión. Si cambia
   los índices esperados, documenta y acuerda la corrección antes de actualizar
   los casos o la referencia. No actualices expectativas para ocultar diferencias.
+- Conserva las mediciones anteriores con su versión, procedencia y alcance
+  originales; no las reasignes a una referencia nueva. Las etiquetas Git
+  preservan el historial sin exigir una copia ejecutable por cada parche.
 
 ## Git
 
@@ -63,11 +70,14 @@ La evolución del algoritmo debe poder explicarse y medirse con ejemplos.
 - Usa Conventional Commits: Release Please calcula las versiones y genera `CHANGELOG.md` a partir de ellos.
 - Las versiones estables se integran mediante pull request de `develop` hacia `main`.
 - Cada push a `main` ejecuta Release Please. La pull request de release se fusiona mediante merge commit con el cuerpo vacío solo cuando se quiere publicar una versión estable.
-- Mientras la aplicación permanezca en `0.x`, `fix:` incrementa el parche, `feat:` incrementa la versión menor y `!` o `BREAKING CHANGE:` identifican un cambio incompatible que también incrementa la versión menor.
+- Sigue SemVer: `fix:` incrementa el parche, `feat:` incrementa la versión menor
+  y `!` o `BREAKING CHANGE:` identifican un cambio incompatible que incrementa
+  la versión mayor.
 - El tag `vX.Y.Z` es la fuente de verdad para la versión de la aplicación; los metadatos técnicos no se sincronizan con las releases.
 - No edites manualmente tags, GitHub Releases o entradas generadas del changelog salvo que la tarea solicite corregir o inicializar la automatización.
 - No fusiones pull requests de release ni publiques versiones sin autorización explícita.
 - Después de una release, hotfix u otro cambio exclusivo de `main`, incorpora en `develop` los cambios reales de archivos. Un merge commit adicional sin diferencias de contenido no requiere sincronización por sí solo.
+
 
 ## Dependencias
 

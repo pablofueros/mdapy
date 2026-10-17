@@ -1,0 +1,34 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: coverage-main
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Generate coverage report
+        run: uv run --frozen pytest --cov=mdapy --cov-report=term-missing --cov-report=xml
+      - name: Upload coverage to Codecov
+        if: ${{ runner.environment == 'github-hosted' }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          use_oidc: true
+          fail_ci_if_error: false

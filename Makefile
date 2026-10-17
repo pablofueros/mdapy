@@ -1,15 +1,16 @@
 .PHONY: install format lint test
 
 install:
+	uv sync --locked
 	uvx prek install
 
 format:
-	uvx ruff check --fix
-	uvx ruff format
+	uv run ruff check --fix
+	uv run ruff format
 
 lint:
-	uvx ruff check
+	uv run ruff check
 	uv run ty check
 
 test:
-	uv run python -m pytest
+	uv run pytest

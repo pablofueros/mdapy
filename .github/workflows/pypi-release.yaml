@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       publish: ${{ steps.release.outputs.publish }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
       sha: ${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Check out released commit
@@ -48,7 +50,11 @@ jobs:
             exit 1
           fi
 
-          echo "publish=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "publish=true"
+            echo "tag=$tag"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     name: Build and validate distributions

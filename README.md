@@ -1,60 +1,51 @@
-# mdapy-v2
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/pablofueros/mdapy-v2/main/assets/banner.png" alt="mdapy logo" width="500"/>
+
+---
+
+### **✨ Maximum Dissimilarity Algorithm in Python✨**
+
+[![Code Quality](https://github.com/pablofueros/mdapy-v2/actions/workflows/code-quality.yml/badge.svg)](https://github.com/pablofueros/mdapy-v2/actions/workflows/code-quality.yml)
+[![Coverage](https://codecov.io/gh/pablofueros/mdapy-v2/graph/badge.svg?branch=main)](https://codecov.io/gh/pablofueros/mdapy-v2)
+[![PyPI Latest Release](https://img.shields.io/pypi/v/mdapy-v2.svg)](https://pypi.org/project/mdapy-v2/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/mdapy-v2.svg)](https://pypi.org/project/mdapy-v2/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/github/license/pablofueros/mdapy-v2.svg)](https://github.com/pablofueros/mdapy-v2/blob/main/LICENSE)
+
+---
+
+</div>
 
 `mdapy-v2` is a maintained fork of
 [`IHCantabria/mdapy`](https://github.com/IHCantabria/mdapy), developed by the
-original author. Version 2.0 introduces the `DataColumn` API while preserving
-the `mdapy` Python import and the original maximum dissimilarity algorithm.
+original author. It keeps the legacy `mdapy` Python import while evolving the
+public API, correctness checks, examples, and performance of the algorithm.
 
-The distributions `mdapy-v2`, `ihc-mdapy`, and the unrelated `mdapy` project
-all provide a package named `mdapy`. Treat them as alternatives: do not install
-them together in the same Python environment.
+> [!IMPORTANT]
+> The distributions `mdapy-v2`, `ihc-mdapy`, and the unrelated `mdapy` project
+> all install a package named `mdapy`. Treat them as alternatives and do not
+> install them together in the same Python environment.
 
 ## Installation
 
-Install the maintained distribution from PyPI:
+`mdapy-v2` requires Python 3.12 or newer.
 
 ```bash
 pip install mdapy-v2
 ```
 
-The import remains unchanged:
+The distribution name changed, but the import remains short and familiar:
 
 ```python
 from mdapy import DataColumn, max_diss_alg
 ```
 
-The original `ihc-mdapy==0.1.0` distribution uses the tuple-based API shown in
-the legacy section below. Version 2.0 also contains the NaN validation from the
-historical `v0.1.1` tag, which was not published to PyPI.
+## Quick start
 
----
-
-## 📋 The Maximum Dissimilarity Algorithm
-The Maximum Dissimilarity Algorithm is a technique used to select a specified number of data points from a larger dataset in such a way that the selected points are maximally dissimilar to each other. The algorithm is particularly useful in scenarios where you need to create diverse subsets of data for analysis or for initializing cluster centroids in clustering algorithms.
-
-In this case, directional variables can also be considered, in which case, the distance between two angles is calculated as the shortest distance between the two angles in a circle. For example, the distance between 350° and 10° is 20°, not 340°. This is the approach used in this implementation of the algorithm (see [Guanche et al. (2013)](#1) for more details).
-
-### Algorithm steps
-
-1. Start with the observation at `seed_index` (default `0`).
-2. For each unselected observation, find its distance to the nearest selected observation.
-3. Select the observation with the greatest nearest distance. Repeat until `n_clusters` observations have been selected.
-
-Distances are Euclidean after dividing each column's difference by its
-standard deviation and `sqrt(2)`. Directional differences use the shortest
-arc in degrees, and their standard deviation is circular. If two candidates
-have exactly the same distance, the one appearing first in the input is
-selected.
-
----
-
-## Usage
-
-Pass one `DataColumn` per variable. Each column must be one-dimensional, have
-the same number of observations, and contain only finite values. Columns with
-zero or undefined standard deviation are rejected. Directional columns are
-angles in degrees. `n_clusters` is required and must be between 1 and the
-number of observations; `seed_index` must be a valid input position.
+Each `DataColumn` represents one variable. Mark angular variables as
+directional so that, for example, the distance between 350° and 10° is 20°
+rather than 340°.
 
 ```python
 from mdapy import DataColumn, max_diss_alg
@@ -71,36 +62,110 @@ points, indices = max_diss_alg(
 )
 ```
 
-Input values are converted to `float32`. `points` is a `float32` NumPy array
-of shape `(n_clusters, n_columns)` in selection order.
-`indices` is a list of positions in the original input. The first position is
-`seed_index` (default `0`).
+`points` contains the selected observations in selection order and `indices`
+contains their positions in the original input. Use `seed_index` to choose a
+different initial observation:
 
-### Legacy tuple API
+```python
+points, indices = max_diss_alg(
+    DataColumn(tp),
+    DataColumn(hs),
+    n_clusters=3,
+    seed_index=4,
+)
+```
 
-Existing tuple-based calls can use an explicit import:
+## How it works
+
+The implementation follows the formulation described in
+[Appendix 1 of Guanche et al. (2013)](#reference).
+
+The Maximum Dissimilarity Algorithm builds a diverse subset iteratively:
+
+1. Start with the observation at `seed_index` (position `0` by default).
+2. Measure every unselected observation against its nearest selected one.
+3. Select the observation whose nearest distance is greatest.
+4. Repeat until `n_clusters` observations have been selected.
+
+Distances are Euclidean after normalizing each variable by its standard
+deviation. Directional variables use the shortest angular distance and a
+circular standard deviation. Exact ties preserve input order.
+
+## Examples
+
+Start with the [minimal selection](examples/1_mda_minimal.py), a one-dimensional
+case small enough to follow in a debugger. The next example animates how the
+algorithm expands a diverse subset through a two-dimensional sample.
+
+<p align="center">
+  <a href="examples/2_mda_selection.py">
+    <img src="https://raw.githubusercontent.com/pablofueros/mdapy-v2/main/assets/examples/selection.png" alt="Maximum dissimilarity selection order in a two-dimensional sample" width="850">
+  </a>
+</p>
+
+For a focused explanation of circular distances, see the
+[directional variables example](examples/3_mda_directional.py). The final
+example applies the algorithm to select representative sea states from 10,000
+directional observations.
+
+<p align="center">
+  <a href="examples/4_mda_datawave.py">
+    <img src="https://raw.githubusercontent.com/pablofueros/mdapy-v2/main/assets/examples/datawave.png" alt="Representative sea states selected from directional wave data" width="750">
+  </a>
+</p>
+
+Clone the repository and run any example in the project environment:
+
+```bash
+uv run python examples/1_mda_minimal.py
+```
+
+## Legacy tuple API
+
+Projects migrating from the original tuple-based API can use an explicit
+compatibility import:
 
 ```python
 from mdapy.legacy import max_diss_alg
 
-points, indices = max_diss_alg((tp, hs, direction), 3, seed_index=0, dir_indices=[2])
+points, indices = max_diss_alg(
+    (tp, hs, direction),
+    3,
+    seed_index=0,
+    dir_indices=[2],
+)
 ```
 
-Passing a tuple to `mdapy.max_diss_alg` raises an error explaining this import.
+Passing a tuple to `mdapy.max_diss_alg` raises an error that points to this
+compatibility module. The published `ihc-mdapy==0.1.0` package uses the legacy
+API; its unpublished `v0.1.1` fix remains available in this repository's Git
+history.
 
----
+## Development
 
-## ©️ Credits
+Install the locked development environment and run the project checks:
 
-Originally developed by 👨‍💻 [Pablo Garcia](https://github.com/pablofueros)
-at 🏢 [IHCantabria](https://github.com/IHCantabria), and now maintained as
-the personal `mdapy-v2` fork. The historical `v0.1.1` fix was contributed by
-Álvaro Rodríguez. The original IHCantabria copyright notice and MIT terms are
-preserved in [`LICENSE`](LICENSE).
+```bash
+make install
+make format
+make lint
+make test
+```
 
----
+## Credits and license
 
-## 📚 References
-<a id="1">[1]</a> Guanche, Y., Guanche, R., Camus, P., Mendez, F. J., & Medina, R. (2013). A multivariate approach to estimate design loads for offshore wind turbines. *Wind Energy*, 16(7), 1091-1106.
+Originally developed by [Pablo Garcia](https://github.com/pablofueros) at
+[IHCantabria](https://github.com/IHCantabria) and now maintained as the
+personal `mdapy-v2` fork. The historical `v0.1.1` fix was contributed by
+[Álvaro Rodríguez](https://github.com/arodriguezluis), but was never included
+in the published `ihc-mdapy` package.
 
----
+The original IHCantabria copyright notice and MIT terms are preserved in
+[LICENSE](LICENSE).
+
+## Reference
+
+Guanche, Y., Guanche, R., Camus, P., Mendez, F. J., & Medina, R. (2013).
+“A multivariate approach to estimate design loads for offshore wind turbines.”
+*Wind Energy*, 16(7), 1091–1106.
+[https://doi.org/10.1002/we.1542](https://doi.org/10.1002/we.1542)

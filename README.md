@@ -93,21 +93,30 @@ circular standard deviation. Exact ties preserve input order.
 
 ## Examples
 
-The repository includes four progressively richer walkthroughs:
+Start with the [minimal selection](examples/1_mda_minimal.py), a one-dimensional
+case small enough to follow in a debugger. The next example animates how the
+algorithm expands a diverse subset through a two-dimensional sample.
 
-- [Minimal selection](examples/1_mda_minimal.py), small enough to follow in a
-  debugger.
-- [Selection order](examples/2_mda_selection.py), shown as an interactive
-  two-dimensional animation.
-- [Directional variables](examples/3_mda_directional.py), comparing linear and
-  circular interpretations of angles.
-- [Sea states](examples/4_mda_datawave.py), selecting representative cases
-  from a larger directional dataset.
+<p align="center">
+  <a href="examples/2_mda_selection.py">
+    <img src="https://raw.githubusercontent.com/pablofueros/mdapy-v2/main/assets/examples/selection.png" alt="Maximum dissimilarity selection order in a two-dimensional sample" width="850">
+  </a>
+</p>
+
+For a focused explanation of circular distances, see the
+[directional variables example](examples/3_mda_directional.py). The final
+example applies the algorithm to select representative sea states from 10,000
+directional observations.
+
+<p align="center">
+  <a href="examples/4_mda_datawave.py">
+    <img src="https://raw.githubusercontent.com/pablofueros/mdapy-v2/main/assets/examples/datawave.png" alt="Representative sea states selected from directional wave data" width="750">
+  </a>
+</p>
 
 Clone the repository and run any example in the project environment:
 
 ```bash
-uv sync
 uv run python examples/1_mda_minimal.py
 ```
 
